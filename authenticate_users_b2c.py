@@ -8,10 +8,8 @@ from pathlib import Path
 
 import app_config as dev_config
 from aad_config import config as aad_config
-from msid_web_python import IdentityWebPython, Policy
-from msid_web_python.adapters import FlaskContextAdapter
-from msid_web_python.errors import NotAuthenticatedError
-# from msid_web_python.flask_blueprint import
+from msal_adapter import IdentityWebPython
+from msal_adapter.adapters import FlaskAdapter
 
 """
 Instructions for running the app:
@@ -81,17 +79,32 @@ def create_app(name='authenticate_users_b2c', root_path=Path(__file__).parent, c
         # print(f'************ UP is {ms_identity_web.user_principal} **********')
         return dict(ms_id_user_principal = ms_identity_web.id_data)
 
-    @app.route('/')
-    @app.route('/sign_in_status')
-    def index():
-        return render_template('auth/status.html')
+    # register the auth endpoints! 
+    app.register_blueprint(auth_endpoints.auth)
 
-    @app.route('/token_details')
-    @ms_identity_web.login_required
-    def token_details():
-        """show the token details, if authenticated"""
-        current_app.logger.info("token_details: user is authenticated, will display token details")
-        return render_template('auth/token.html')
+    # the auth endpoints are:
+    # sign_in
+    # redirect
+    # sign_out
+    # post_sign-out
+    # sign_in_status
+    # token_details
+    # edit_profile
+
+    # ms identity web for python: instantiate the flask adapter
+    adapter = FlaskAdapter(current_app)
+    # then instantiate ms identity web for python:
+    IdentityWebPython(aad_config, adapter) # or like this: IdentityWebPython(config).set_adapter(FlaskAdapter(current_app))
+
+    # injects ms_id_user_principal into each template view
+    # TODO hook this up from adapter
+    @app.context_processor
+    def user_principal_processor():
+        return dict(ms_id_user_principal = current_app.config.get('ms_identity_web').user_principal)
+
+    @app.route('/')
+    def index():
+        return redirect(url_for('auth.sign_in_status'))
 
     return app
 

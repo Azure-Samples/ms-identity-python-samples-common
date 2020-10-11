@@ -26,7 +26,7 @@ def token_details():
     current_app.logger.info("token_details: user is authenticated, will display token details")
     return render_template('auth/token.html')
 
-@auth.route(config.get('SIGN_IN_ENDPOINT'))
+@auth.route(config.get('SIGN_IN_ENDPOINT', '/sign_in'))
 def sign_in():
     current_app.logger.info("sign_in: request received at sign in endpoint. will redirect browser to Azure AD login")
     # state is important since the redirect endpoint needs to know that our app + same user session initiated the process (CSRF protection)
@@ -38,59 +38,46 @@ def sign_in():
             response_type=config.get('RESPONSE_TYPE'))
     return redirect(auth_url)
 
-@auth.route(config.get('REDIRECT_ENDPOINT'))
-def authorization_redirect():
-    current_app.logger.info("authorization_redirect: request received at redirect endpoint")
-    # CSRF protection: make sure to check that state matches the one we placed in session
-    # This check ensures our app + the same user session made the /authorize request that resulted in this auth code redirect
-    state = session.get("state", None)
-    if state is None or request.args.get('state') != state:
-        current_app.logger.error("authorization redirect: state doesn't match. aborting.")
-        return redirect(url_for('index'))
-
-    if 'error' in request.args:
-        current_app.logger.error("authorization_redirect: AuthN / AuthZ failed: auth code request resulted in error. aborting.")
-        return redirect(url_for('post_sign_out')) # sign out on error
-
-    authorization_code = request.args.get('code', None)
-    if authorization_code is None:
-        current_app.logger.error("authorization_redirect: request to this endpoint must have 'code' URL query parameter")
-        return "Bad Request: request must have 'code' URL query parameter", 400
-    else:
-        # we have an authorization code and have excluded common errors.
-        # now we will exchange it for our tokens.
-        current_app.logger.info("authorization_redirect: attempting to get a token from the /token endpoint")
-        token_acquisition_result = msal_instance.acquire_token_by_authorization_code(
-                                    authorization_code,
-                                    config.get('SCOPES'),
-                                    redirect_uri=config.get('REDIRECT_URI'))
-        if "error" not in token_acquisition_result:
-            # now we will place the token(s) and a boolean 'msal_authenticated = True' into the session for later use:
-            current_app.logger.info("authorization_redirect: successfully obtained a token from the /token endpoint.")
-            current_app.logger.debug(json.dumps(token_acquisition_result, indent=4, sort_keys=True))
-            _place_token_details_in_session(token_acquisition_result)
-        else:
-            current_app.logger.error("AuthN / AuthZ failed: token request resulted in error")
-            current_app.logger.error(f"{token_acquisition_result['error']}: {token_acquisition_result.get('error_description')}")
-            return redirect(url_for('post_sign_out')) # sign out on error
-
+@auth.route(config.get('REDIRECT_ENDPOINT', '/redirect'))
+def aad_redirect():
+    current_app.logger.info("aad_redirect: request received at redirect endpoint")
+    get_identity_web().process_auth_redirect() # TODO: pass in redirect URL here.
     return redirect(url_for('index'))
 
-def _place_token_details_in_session(token_acquisition_result):
-    session['msal_token_result']=token_acquisition_result
-    session['msal_authenticated']=True
-    id_token_claims=token_acquisition_result.get('id_token_claims', {})
-    session['msal_id_token_claims'] = id_token_claims
-    session['msal_username'] = id_token_claims.get('name', None)
-    
-
-@auth.route(config.get('SIGN_OUT_ENDPOINT'))
+@auth.route('/sign_out')
 def sign_out():
-    current_app.logger.info(f"sign_out: signing out user. username: {session.get('msal_username', None)}")
-    return redirect(config.get('AAD_SIGN_OUT_URL'))    # send the user to Azure AD logout endpoint
+    id_web = get_identity_web()
+    current_app.logger.info(f"sign_out: signing out user. username: {id_web.user_principal.username}")
+    return id_web.sign_out(url_for('.post_sign_out', _external = True))    # send the user to Azure AD logout endpoint
 
-@auth.route(config.get('POST_SIGN_OUT_ENDPOINT'))
+@auth.route('/post_sign_out')
 def post_sign_out():
-    current_app.logger.info(f"post_sign_out: clearing session for user. username: {session.get('msal_username', None)}")
-    session.clear()                              # clear our server-side session on successful logout
-    return redirect(url_for('index'))            # take us back to the home page
+    id_web = get_identity_web()
+    current_app.logger.info(f"post_sign_out: clearing session for user. username: {id_web.user_principal.username}")
+    id_web.remove_user(id_web.user_principal.username)  # remove user auth from session on successful logout
+    return redirect(url_for('index'))                   # take us back to the home page
+
+# TODO: wrapper function: requires authentication
+# TODO: remove from here and into app
+@auth.route('/sign_in_status')
+def sign_in_status():
+    return render_template('auth/status.html')
+
+# TODO: wrapper function: requires authentication
+# TODO: remove from here and into app
+@auth.route('/edit_profile')
+def edit_profile():
+    current_app.logger.info("edit_profile: request received at edit profile endpoint. will redirect browser to edit profile")
+    auth_url = get_identity_web().get_auth_url(str(Policy.EDIT_PROFILE))
+    return redirect(auth_url)
+
+# TODO: wrapper function: requires authentication
+# TODO: remove from here and into app
+@auth.route('/token_details')
+def token_details():
+    user = get_identity_web().user_principal
+    if not user.authenticated:
+        current_app.logger.info("token_details: user is not authenticated, will display 401 error")
+        return render_template('auth/401.html')
+    current_app.logger.info("token_details: user is authenticated, will display token details")
+    return render_template('auth/token.html')

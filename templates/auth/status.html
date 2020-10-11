@@ -5,9 +5,11 @@
 {% endblock %}
 
 {% block text %}
-    {% if session.msal_authenticated %}
-        Click here to get your <a class="btn btn-success" href="{{ url_for('auth.token_details') }}">ID Token Details</a>
+    {% if ms_id_user_principal.authenticated %}
+        Click here to get your <a class="btn btn-success p-1" href="{{ url_for('auth.token_details') }}">ID Token Details</a>
+        or <a class="btn btn-success p-1" href="{{ url_for('auth.edit_profile') }}">Edit Profile</a>
     {% else %}
-        Use the button on the top right to sign in.
+        Use the button on the top right to sign in. <br/>
+        Attempts to get your <a href="{{ url_for('auth.token_details') }}">ID Token Details</a> should result in a 401 error.
     {% endif %}
 {% endblock %}

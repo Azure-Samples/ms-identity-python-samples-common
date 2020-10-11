@@ -20,7 +20,6 @@ require_init = require_init_with_type_check(_currently_supported_adapters)
 # TODO: 
 #  ##### IMPORTANT #####
 # features:
-# - fix sign out issue 
 # - get token_cache working
 # - get claims/account from token_cache
 # - decorator for login_required
@@ -31,6 +30,7 @@ require_init = require_init_with_type_check(_currently_supported_adapters)
 # - define django adapter: factor common adapter methods to a parent class that flask and django adapters inherit
 #
 # code quality:
+# - check if session has changed before reloading id_context ?
 # - rename require_init to something more descriptive
 # - more try catch blocks around sensitive failure-prone methods for gracefule error-handling
 # - check for session explicitly in adapter
@@ -84,14 +84,14 @@ class IdentityWebPython(object):
 
     def _client_factory(self, policy: Policy = None, token_cache: SerializableTokenCache = None) -> ConfidentialClientApplication:
         client_config = self.client.copy() # need to make a copy since contents must be mutated
-        client_config['authority'] = f'{self.client["authority"]}{policy}'
+        client_config['authority'] = f'{self.client["authority"]}{policy}' # TODO: do we need this if this client is created at /redirect?
 
         # configure based on settings
         # TODO: choose client type based on config - currently only does confidential
         # the following line removes the meta-data that msal lib doesn't consume: 
         client_config = {k:v for k, v in client_config.items() if not k.startswith('meta_')} # remove the meta-values
         
-        client_config['token_cache'] = token_cache or self._get_token_cache()
+        client_config['token_cache'] = token_cache or None
 
         return ConfidentialClientApplication(**client_config)
 
@@ -99,7 +99,7 @@ class IdentityWebPython(object):
     @require_init
     def user_principal(self) -> Any:
         id_context = self._adapter.identity_context
-        account = self._client_factory(str(Policy.SIGN_UP_SIGN_IN)).get_accounts()
+        # accounts = self._client_factory(str(Policy.SIGN_UP_SIGN_IN)).get_accounts()
         return UserPrincipal(id_context)
     
     @require_init
@@ -115,7 +115,7 @@ class IdentityWebPython(object):
 
     # TODO: assert request type matches adapter
     @require_init
-    def process_auth_redirect(self, request: 'a request type matching the adapter OR None in Flask'= None) -> None:
+    def process_auth_redirect(self) -> None:
         req_params = self._adapter.get_request_params_as_dict()
         try:
             # CSRF protection: make sure to check that state matches the one placed in the session in the previous step.
@@ -129,13 +129,14 @@ class IdentityWebPython(object):
             # get the response_type that was requested, and extract the payload:
             resp_type = self.auth_request.get(str(ResponseType.PARAM_KEY), None)
             payload = self._extract_auth_response_payload(req_params, resp_type)
+            cache = self._adapter.identity_context.token_cache
 
             if resp_type in [str(ResponseType.CODE), None]: # code request is default for msal-python if there is no response type specified
                 # we should have a code. Now we must exchange the code for tokens.
-                result = self._x_change_auth_code_for_token(payload)
+                result = self._x_change_auth_code_for_token(payload, cache)
+                self._process_x_change_auth_code_for_token_result(result, cache)
             else:
                 raise NotImplementedError(f"response_type {resp_type} is not yet implemented by ms_identity_web_python")
-            self._process_token_response(result)
             # self._verify_nonce() # one of the last steps TODO - is this required? msal python takes care of it?
         except AuthSecurityError as ase:
             self.remove_user()
@@ -169,7 +170,7 @@ class IdentityWebPython(object):
                                                    self.auth_request.get('redirect_uri', None),
                                                    id_context.nonce)
 
-    def _process_token_response(self, result: Any) -> None:
+    def _process_x_change_auth_code_for_token_result(self, result: dict, cache: SerializableTokenCache) -> None:
         if "error" not in result:
             id_context = self._adapter.identity_context
             # now we will place the token(s) and auth status into the context for later use:
@@ -178,9 +179,7 @@ class IdentityWebPython(object):
             id_context.authenticated = True
             id_context._id_token_claims = result.get('id_token_claims', dict()) # TODO: if this is to stay in ctxt, use proper getter/setter
             id_context.username = id_context._id_token_claims.get('name', None)
-            token_cache = self._get_token_cache()
-            if token_cache.has_state_changed:
-                id_context.token_cache = token_cache
+            id_context.token_cache = cache
         else:
             raise TokenExchangeError("_x_change_auth_code_for_token: Auth failed: token request resulted in error"
                                         f"{result['error']}: {result.get('error_description', None)}")
@@ -202,13 +201,6 @@ class IdentityWebPython(object):
     def remove_user(self, username: str = None) -> None: #TODO: complete this so it doesn't just clear the session but removes user
         self._adapter.clear_session()
         # TODO e.g. if active username in id_context_'s username is not anonymous, remove it
-
-    def _get_token_cache(self) -> SerializableTokenCache:
-        cache_instance = SerializableTokenCache()
-        saved_cache = self._adapter.identity_context.token_cache
-        if saved_cache:
-            cache_instance = cache_instance.deserialize(saved_cache)
-        return cache_instance
     
     @require_init
     def _generate_and_append_state_to_context_and_request(self, req_param_dict: dict) -> str:
