@@ -1,7 +1,7 @@
 <ul class="nav navbar-nav navbar-right">
     {% if ms_id_user_principal.authenticated %}
         <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('auth.token_details') }}">Hello {{ ms_id_user_principal.username }}!</a>
+            <a class="nav-link" href="{{ url_for('token_details') }}">Hello {{ ms_id_user_principal.username }}!</a>
         </li>
         <li>
             <a class="btn btn-warning" href="{{ url_for('auth.sign_out') }}">Sign Out</a>

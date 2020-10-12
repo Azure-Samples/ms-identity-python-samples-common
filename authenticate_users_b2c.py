@@ -8,8 +8,9 @@ from pathlib import Path
 
 import app_config as dev_config
 from aad_config import config as aad_config
-from msal_adapter import IdentityWebPython
-from msal_adapter.adapters import FlaskAdapter
+from msid_web_python import IdentityWebPython, Policy
+from msid_web_python.adapters import FlaskContextAdapter
+from msid_web_python.errors import NotAuthenticatedError
 
 """
 Instructions for running the app:
@@ -59,52 +60,40 @@ def create_app(name='authenticate_users_b2c', root_path=Path(__file__).parent, c
     
     # init the serverside session on the app
     Session(app)
-    
-    # # We have to push the context before registering auth endpoints blueprint
-    # app.app_context().push()
 
-    # from msid_web_python import flask_blueprint as auth_endpoints# this is where our auth-related endpoints are defined
-    # app.register_blueprint(auth_endpoints.auth)
-    # ms identity web for python: 
-    adapter = FlaskContextAdapter(app) # instantiate the flask adapter
-    ms_identity_web = IdentityWebPython(aad_config, adapter) # then instantiate ms identity web for python:
-    # register error handlers
-    register_error_handlers(app)
-    # the auth endpoints are: sign_in, redirect, sign_out, post_sign-out, # sign_in_status, token_details, edit_profile
+    # We have to push the context before registering auth endpoints blueprint
+    app.app_context().push()
 
-    # TODO hook this up from adapter ?
-    @app.context_processor
-    def user_principal_processor():
-        """this context processor adds user principal to all the views"""
-        # print(f'************ UP is {ms_identity_web.user_principal} **********')
-        return dict(ms_id_user_principal = ms_identity_web.id_data)
-
-    # register the auth endpoints! 
-    app.register_blueprint(auth_endpoints.auth)
-
-    # the auth endpoints are:
-    # sign_in
-    # redirect
-    # sign_out
-    # post_sign-out
-    # sign_in_status
-    # token_details
-    # edit_profile
-
-    # ms identity web for python: instantiate the flask adapter
-    adapter = FlaskAdapter(current_app)
+    # ms identity web for python: instantiate the flask adapter:
+    adapter = FlaskContextAdapter()
     # then instantiate ms identity web for python:
-    IdentityWebPython(aad_config, adapter) # or like this: IdentityWebPython(config).set_adapter(FlaskAdapter(current_app))
+    ms_identity_web = IdentityWebPython(aad_config, adapter)
 
-    # injects ms_id_user_principal into each template view
-    # TODO hook this up from adapter
-    @app.context_processor
-    def user_principal_processor():
-        return dict(ms_id_user_principal = current_app.config.get('ms_identity_web').user_principal)
+    # this is where our auth-related endpoints are defined:
+    import auth_endpoints
+    app.register_blueprint(auth_endpoints.auth)
+    # the auth endpoints are: sign_in, redirect, sign_out, post_sign-out, # sign_in_status, token_details, edit_profile
 
     @app.route('/')
     def index():
         return redirect(url_for('auth.sign_in_status'))
+
+    @app.route('/token_details')
+    @ms_identity_web.login_required
+    def token_details():
+        current_app.logger.info("token_details: user is authenticated, will display token details")
+        return render_template('auth/token.html')
+
+    # TODO hook this up from adapter ?
+    @app.context_processor
+    def user_principal_processor():
+        return dict(ms_id_user_principal = ms_identity_web.user_principal)
+
+    def not_authenticated(err):
+        current_app.logger.info(f"{request.url}: {err}")
+        return render_template('auth/401.html')
+
+    app.register_error_handler(NotAuthenticatedError, not_authenticated)
 
     return app
 

@@ -15,6 +15,6 @@ class B2CPasswordError(AuthError):
     # login interrupted, must do password reset
     pass
 class NotAuthenticatedError(HTTPException, AuthError):
-    """Flask HTTPException Error + IdWebPy AuthError: User is not authenticated."""
+    # user is not authenticated
     code = 401
-    description = 'User is not authenticated'
+    description = 'You must be authenticated'
