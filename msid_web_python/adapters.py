@@ -3,39 +3,44 @@ try:
     from flask import (
         Flask as flask_app,
         current_app as flask_current_app, 
-        has_request_context as flask_has_context,
+        has_request_context as flask_has_request_context,
         session as flask_session,
         request as flask_request,
-        redirect as flask_redirect)
+        redirect as flask_redirect,
+        g as flask_g,
+        )
 except:
     pass
 
-from typing import Any, Union
-from functools import partial, wraps
 from .context import IdentityContext
 
+from typing import Any, Union
+from functools import partial, wraps
+
 # decorator to make sure access within request context
-def require_context(f):
+def require_request_context(f):
     @wraps(f)
     def assert_context(self, *args, **kwargs):
-        if not flask_has_context():
+        if not flask_has_request_context():
             self._has_context = False
-            raise RuntimeError("Operation requires request and/or session context")
+            flask_current_app.logger.info(f"{self.__class__.__name__}.{f.__name__}: No request context, aborting")
         else:
             self._has_context = True
-        return f(self, *args, **kwargs)
+            return f(self, *args, **kwargs)
     return assert_context
 
 class IdentityWebContextAdapter(metaclass=ABCMeta):
+    """Context Adapter abstract base class. Extend this to enable IdentityWebPython to
+    work within any environment (e.g. Flask, Django, Windows Desktop app, etc) """
     @abstractmethod
     def __init__(self) -> None:
         self._has_context = False
-        self._identity_context = None
 
     @abstractmethod
-    def _on_context_initialized(self) -> None: # is this necessary for all adapters?
+    def _on_context_init(self) -> None: # is this necessary for all adapters?
         pass
 
+    # TODO: make this dictionary key name configurable on app init
     @abstractmethod
     def attach_identity_web_util(self, identity_web: 'IdentityWebPython') -> None:
         pass
@@ -44,106 +49,120 @@ class IdentityWebContextAdapter(metaclass=ABCMeta):
     def has_context(self) -> bool:
         return self._has_context
     
-    @property
-    @require_context
-    def identity_context(self) -> IdentityContext:
-        return IdentityContext.hydrate_from_session(self.session, self.logger)
+    @abstractmethod # @property
+    @require_request_context
+    def identity_context(self) -> 'IdentityContext':
+        pass
+    
 
-    @abstractmethod
-    # @property
-    @require_context
+    @abstractmethod # @property
+    @require_request_context
     def session(self) -> None:
         # TODO: set session attr so can concrete implement here?
         pass
 
     @abstractmethod
-    @require_context
+    @require_request_context
     def clear_session(self) -> None:
         # TODO: clear ONLY msidweb session stuff
         # TODO: concrete implement here instead?
         pass
 
-    @require_context
+    @require_request_context
     def get_value_from_session(self, key: str, default: Any = None) -> Any:
         return self.session.get(key, default)
 
     
-    @require_context
+    @require_request_context
     def get_request_param(self, key: str, default: Any = None) -> Any:
         return self._get_request_params_as_dict(key, default)
 
     @abstractmethod
-    @require_context
+    @require_request_context
     def redirect_to_absolute_url(self, absolute_url: str) -> None:
         #TODO: set attr redirect on init, so concrete method can be used for all frmwrks
         pass
 
     @abstractmethod
-    @require_context
+    @require_request_context
     def get_request_params_as_dict(self) -> dict:
         pass
 
-
 class FlaskContextAdapter(IdentityWebContextAdapter):
-
-    def __init__(self) -> None:
-        assert isinstance(flask_current_app._get_current_object(), flask_app)
+    """Context Adapter to enable IdentityWebPython to work within the Flask environment"""
+    def __init__(self, app) -> None:
+        # assert isinstance(app, flask_app)
+        
         super().__init__()
-        self.logger = flask_current_app.logger
-        context_init_callback = partial(FlaskContextAdapter._on_context_initialized, self)
-        flask_current_app.before_first_request_funcs.append(context_init_callback)
+        
+        # self._has_context = True
+        with app.app_context():
+            self.app = app
+            self.logger = app.logger
+            app.before_request(self._on_context_init)
+            app.teardown_request(self._on_context_end)
+            # app.after_request(self._on_context_end)
 
-    # Flask-specific checks in here. django adapter will have to override
-    def _on_context_initialized(self) -> None:
-        """ method is called when flask first gets context to set up identity environment """
-        if flask_has_context():
-            self._has_context = True
-            # self._set_identity_context()
-        else:
-            flask_current_app.logger.warning("unable to get Flask context on first request")
+    @property
+    @require_request_context
+    def identity_context(self) -> 'IdentityContext':
+        # use g instead of instance var because g is context dependent.
+        # TODO: make the key name configurable
+        if not hasattr(flask_g, 'identity_context'):
+            identity_context = IdentityContext.hydrate_from_session(flask_session, flask_current_app.logger)
+            flask_g.identity_context = identity_context
+        return flask_g.identity_context
 
-    # attach the identity web instance to session so it is accessible everywhere.
-    # e.g., current_app.config.get("ms_identity_web").get_auth_url(...)
+    # method is called when flask gets an app/request context
+    # Flask-specific startup here?
+    # @flask_current_app.before_request
+    def _on_context_init(self) -> None:
+        print(f"on context init: {flask_session.get('msal_session_params')}")
+        self._has_context = True
+        flask_g.identity_context = IdentityContext
+    
+    def _on_context_end(self, callback) -> None: 
+        print (f"++callback: {callback}")
+        if flask_has_request_context():
+            if 'identity_context' in flask_g and flask_g.identity_context.has_changed:
+                flask_g.identity_context._save_to_session(flask_session)
+                del flask_g.identity_context
+            self._has_context = False
+        return callback
+
+    # TODO: make this dictionary key name configurable on app init
     def attach_identity_web_util(self, identity_web: 'IdentityWebPython') -> None:
-        flask_current_app.config['ms_identity_web'] = identity_web
-        identity_web.set_logger(flask_current_app.logger)
+        """attach the identity web instance to session so it is accessible everywhere.
+        e.g., ms_id_web = current_app.config.get("ms_identity_web")\n
+        Also attaches the application logger."""
+        self.app.config['ms_identity_web'] = identity_web
+        identity_web.set_logger(self.logger)
 
     @property
     def has_context(self) -> bool:
         return self._has_context
 
-    # @property
-    # @require_context
-    # def identity_context(self) -> IdentityContext:
-    #     # check if session has changed before deserializing! or check if id_context != session("id_context")?
-    #     return IdentityContext.hydrate_from_session(self.session)
-
     ### not sure if this method needs to be public yet :/
     @property
-    @require_context
+    @require_request_context
     def session(self) -> None:
         return flask_session
 
-    @require_context
+    # TODO: only clear IdWebPy vars
+    @require_request_context
     def clear_session(self) -> None:
+        """this function clears the session and refreshes context. TODO: only clear IdWebPy vars"""
         # TODO: clear ONLY msidweb session stuff
         flask_session.clear()
 
-    # @require_context
-    # def get_value_from_session(self, key: str, default: Any = None) -> Any:
-    #     return flask_session.get(key, default)
-
-    # @require_context
-    # def get_request_param(self, key: str, default: Any = None) -> Any:
-    #     return self._get_requst_params_as_dict.get(key, default)
-
-    @require_context
+    @require_request_context
     def redirect_to_absolute_url(self, absolute_url: str) -> None:
+        """this function redirects to an absolute url"""
         return flask_redirect(absolute_url)
 
-    # this function returns flask's request params
-    @require_context
+    @require_request_context
     def get_request_params_as_dict(self) -> dict:
+        """this function returns the params dict from any flask request"""
         try:
             # this is query and form-post params merged,
             # preferring query param if there is a key collision
@@ -153,12 +172,23 @@ class FlaskContextAdapter(IdentityWebContextAdapter):
                 self.logger.warning("Couldn't get param dict from request, substituting empty dict instead")
             return dict()
 
-class DjangoAdapter(object):
+# the following class is incomplete
+class DjangoContextAdapter(object):
+    """Context Adapter to enable IdentityWebPython to work within the Django environment"""
     def __init__(self):
         raise NotImplementedError("not yet implemented")
 
-    # this function returns Django's request params
-    @require_context
+    # method is called when getting app/request context
+    def _on_context_init(self) -> None:
+        self._has_context = True
+    
+    def _on_context_teardown(self, exception) -> None: 
+        self._has_context = False
+        if self.identity_context.has_changed:
+            self.identity_context._save_to_session()
+
+    # this function returns Django's request params.
+    @require_request_context
     def get_request_params_as_dict(self, request: 'request' = None) -> dict:
         try:
             if request.method == "GET":

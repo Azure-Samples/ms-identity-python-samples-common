@@ -44,7 +44,10 @@ def require_context_adapter(f):
     @wraps(f)
     def assert_adapter(self, *args, **kwargs):
         if not isinstance(self._adapter, IdentityWebContextAdapter) or not self._adapter.has_context:
-            raise AttributeError(f"Valid adapter must be set and have context")
+            if self.logger:
+                self.logger.info(f"{self.__class__.__name__}.{f.__name__}: invalid adapter or no request context, aborting")
+            else:
+                print(f"{self.__class__.__name__}.{f.__name__}: invalid adapter or no request context, aborting")
         return f(self, *args, **kwargs)
     return assert_adapter
 
@@ -124,7 +127,10 @@ class IdentityWebPython(object):
             # CSRF protection: make sure to check that state matches the one placed in the session in the previous step.
             # This check ensures this app + this same user session made the /authorize request that resulted in this redirect
             # This should always be the first thing verified on redirect.
+            from flask import g
+            lol = g
             self._verify_state(req_params)
+            
             self._logger.info("process_auth_redirect: state matches. continuing.")
             self._parse_redirect_errors(req_params)
             self._logger.info("process_auth_redirect: no errors found in request params. continuing.")
@@ -257,6 +263,17 @@ class IdentityWebPython(object):
             raise AuthSecurityError("Failed to match ID token nonce with session nonce")
         # don't allow re-use of nonce
         self._adapter.identity_context.nonce = None
+
+    # @property
+    # def login_required(self):
+    #     def requires_login(f):
+    #         @wraps(f)
+    #         def assert_login(*args, **kwargs):
+    #             if not self.user_principal.authenticated:
+    #                 raise NotAuthenticatedError()
+    #             return f(*args, *kwargs)
+    #         return assert_login
+    #     return requires_login
 
     @property
     def login_required(self):
