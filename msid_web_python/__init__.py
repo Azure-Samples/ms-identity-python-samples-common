@@ -178,6 +178,8 @@ class IdentityWebPython(object):
                                         f"{result['error']}: {result.get('error_description', None)}")
 
     def _parse_redirect_errors(self, req_params: dict) -> None:
+        # TODO implement all errors which affect program behaviour
+        # https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-auth-code-flow
         if str(AADError.ERROR_CODE_PARAM_KEY) in req_params:
             # we have an error. get the error code to interpret it:
             error_code = req_params.get(str(AADError.ERROR_CODE_PARAM_KEY), None)

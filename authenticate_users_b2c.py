@@ -59,6 +59,7 @@ def create_app(name='authenticate_users_b2c', root_path=Path(__file__).parent, c
     
     Session(app) # init the serverside session on the app
     register_error_handlers(app) # register error handlers
+    # TODO: more descriptive reason for why we have error handler
     
     adapter = FlaskContextAdapter(app) # ms identity web for python: instantiate the flask adapter
     ms_identity_web = IdentityWebPython(aad_config, adapter) # then instantiate ms identity web for python:

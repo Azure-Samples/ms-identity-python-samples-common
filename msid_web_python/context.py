@@ -12,7 +12,8 @@ class IdentityContextData(object):
         self._token_cache = None
         self._nonce = None
         self._state = None
-        self._id_token_claims = None # does this belong here? TODO: if it does, add getter/setter
+        self._id_token_claims = None # does this belong here? yes, Token/claims customization. TODO: if it does, add getter/setter,
+        # ID tokens aren't cached so do store this here? 
         self._last_used_b2c_policy = []
         self.has_changed = False # don't save this
 
