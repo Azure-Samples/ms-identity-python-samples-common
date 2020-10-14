@@ -11,6 +11,7 @@ from aad_config import config as aad_config
 from msid_web_python import IdentityWebPython, Policy
 from msid_web_python.adapters import FlaskContextAdapter
 from msid_web_python.errors import NotAuthenticatedError
+# from msid_web_python.flask_blueprint import
 
 """
 Instructions for running the app:
@@ -42,7 +43,6 @@ def register_error_handlers(app):
     # NotAuthenticatedError is both flask 401 and IdWebPy base autherror
     app.register_error_handler(NotAuthenticatedError, not_authenticated)
 
-
 def create_app(name='authenticate_users_b2c', root_path=Path(__file__).parent, config_dict=None, aad_config_dict=None):
     app = Flask(name, root_path=root_path)
     app.config['ENV'] = os.environ.get('FLASK_ENV', 'development')
@@ -65,12 +65,10 @@ def create_app(name='authenticate_users_b2c', root_path=Path(__file__).parent, c
     # # We have to push the context before registering auth endpoints blueprint
     # app.app_context().push()
 
-    from msid_web_python import flask_blueprint as auth_endpoints # this is where our auth-related endpoints are defined
-    app.register_blueprint(auth_endpoints.auth)
-
+    # from msid_web_python import flask_blueprint as auth_endpoints# this is where our auth-related endpoints are defined
+    # app.register_blueprint(auth_endpoints.auth)
     # ms identity web for python: 
     adapter = FlaskContextAdapter(app) # instantiate the flask adapter
-    # lol = adapter.session
     ms_identity_web = IdentityWebPython(aad_config, adapter) # then instantiate ms identity web for python:
     # register error handlers
     register_error_handlers(app)
@@ -80,12 +78,13 @@ def create_app(name='authenticate_users_b2c', root_path=Path(__file__).parent, c
     @app.context_processor
     def user_principal_processor():
         """this context processor adds user principal to all the views"""
-        return dict(ms_id_user_principal = ms_identity_web.user_principal)
+        # print(f'************ UP is {ms_identity_web.user_principal} **********')
+        return dict(ms_id_user_principal = ms_identity_web.id_data)
 
     @app.route('/')
+    @app.route('/sign_in_status')
     def index():
-        """send user to sign in status view"""
-        return redirect(url_for('auth.sign_in_status'))
+        return render_template('auth/status.html')
 
     @app.route('/token_details')
     @ms_identity_web.login_required

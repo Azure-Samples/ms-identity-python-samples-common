@@ -7,8 +7,8 @@
 {% endblock %}
 
 {% block text %}
-    {% if session.msal_authenticated %}
-        {% for claim, value in session.msal_id_token_claims.items() %}
+    {% if g.identity_context_data.authenticated %}
+        {% for claim, value in g.identity_context_data._id_token_claims.items() %}
             {% if claim not in exclude_claims %}
                 <strong>{{ claim }}:</strong> {{ value }}
                 <br>
@@ -16,7 +16,7 @@
         {% endfor %}
     {% endif %}
     <br>
-    Click here to see your <a class="btn btn-success p-1" href="{{ url_for('auth.sign_in_status') }}">Sign-in Status</a>
+    Click here to see your <a class="btn btn-success p-1" href="{{ url_for('index') }}">Sign-in Status</a>
     or <a class="btn btn-success p-1" href="{{ url_for('auth.edit_profile') }}">Edit Profile</a>
 {% endblock %}
 

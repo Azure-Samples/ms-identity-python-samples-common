@@ -7,12 +7,13 @@ from logging import Logger
 from typing import Union, Any
 from functools import wraps
 
-from .context import IdentityContext
+from .context import IdentityContextData
 from .constants import Policy, Prompt, RequestParameter, AADErrorResponse as AADError
 from .adapters import FlaskContextAdapter
 from .constants import AuthorityType, ClientType, ResponseType, SignOut
 from .errors import *
 from msid_web_python.adapters import IdentityWebContextAdapter
+from flask import session
 
 # TODO: 
 #  ##### IMPORTANT #####
@@ -25,12 +26,9 @@ from msid_web_python.adapters import IdentityWebContextAdapter
 # - define django adapter: factor common adapter methods to a parent class that flask and django adapters inherit
 #
 # code quality:
-# - check if auth status has changed before rehydrating id_context
-# - rename require_init to something more descriptive
 # - more try catch blocks around sensitive failure-prone methods for gracefule error-handling
 # - check for session explicitly in adapter
 # - save/load context only if session has changed (?)
-# - try-catch or better logic around id_context.push/pop last_used_b2c ?
 # - rename adapters to context_adapters - or a better, more descriptive name?
 # - a reference to the id_context right here in the IdWebPython util rather than having to access thru adapter each time?
 # 
@@ -44,44 +42,30 @@ def require_context_adapter(f):
     @wraps(f)
     def assert_adapter(self, *args, **kwargs):
         if not isinstance(self._adapter, IdentityWebContextAdapter) or not self._adapter.has_context:
-            if self.logger:
-                self.logger.info(f"{self.__class__.__name__}.{f.__name__}: invalid adapter or no request context, aborting")
+            if self._logger:
+                self._logger.info(f"{self.__class__.__name__}.{f.__name__}: invalid adapter or no request context, aborting")
             else:
                 print(f"{self.__class__.__name__}.{f.__name__}: invalid adapter or no request context, aborting")
         return f(self, *args, **kwargs)
     return assert_adapter
-
-class UserPrincipal(object):
-    def __init__(self, identity_context: IdentityContext) -> None:
-        self.username = identity_context.username
-        self.id_token_claims = identity_context._id_token_claims # not sure if to get from here
-        self.authenticated = identity_context.authenticated
         
 class IdentityWebPython(object):
 
     def __init__(self, config: dict, adapter: FlaskContextAdapter = None, logger: Logger = None) -> None:
         self._logger = logger or Logger('IdentityWebPython')
         self._adapter = None
-        self.client = config.get('client')
-        self.policy = config.get('policy')
-        self.auth_request = config.get('auth_request')
-        sanity_check(self.client, self.policy, self.auth_request) # fail out if configs are invalid
-        if self.client['meta_authority_type'] is AuthorityType.B2C: Policy.set_enum_values(self.policy)
-
+        self.client_config = config.get('client')
+        self.policy_config = config.get('policy')
+        self.auth_request_config = config.get('auth_request')
+        sanity_check_configs(self.client_config, self.policy_config, self.auth_request_config) # fail out if configs are invalid
+        if self.client_config['meta_authority_type'] is AuthorityType.B2C: Policy.set_enum_values(self.policy_config)
         if adapter is not None:
              self.set_adapter(adapter)
 
     @property
     @require_context_adapter
-    def user_principal(self) -> Any:
-        # TODO: add auth state change flag; and check it here and load fresh only if flag is set.
-        # TODO: e.g. only set flag on successful auth or auth failure.
-        id_context = self._adapter.identity_context
-        user_principal = UserPrincipal(id_context)
-        accounts = self._client_factory(str(Policy.SIGN_UP_SIGN_IN), id_context.token_cache).get_accounts()
-        if accounts:
-            user_principal.__setattr__('account', accounts[0])
-        return user_principal
+    def id_data(self) -> IdentityContextData:
+        return self._adapter.identity_context_data
     
     # this might behave differently in django... to be determined.
     # therefore split to separate flask method:
@@ -96,8 +80,8 @@ class IdentityWebPython(object):
         self._logger = logger
 
     def _client_factory(self, policy: Policy = None, token_cache: SerializableTokenCache = None) -> ConfidentialClientApplication:
-        client_config = self.client.copy() # need to make a copy since contents must be mutated
-        client_config['authority'] = f'{self.client["authority"]}{policy}' # TODO: do we need this if this client is created at /redirect?
+        client_config = self.client_config.copy() # need to make a copy since contents must be mutated
+        client_config['authority'] = f'{self.client_config["authority"]}{policy}' # TODO: do we need this if this client is created at /redirect?
 
         # configure based on settings
         # TODO: choose client type based on config - currently only does confidential
@@ -111,13 +95,13 @@ class IdentityWebPython(object):
 
     @require_context_adapter
     def get_auth_url(self, policy: str) -> str:
-        auth_req_config = self.auth_request.copy() # need to make a copy since contents must be mutated
+        auth_req_config = self.auth_request_config.copy() # need to make a copy since contents must be mutated
         # remove prompt = select_account if edit profile policy is selected
         # do not make user pick idp again:
         if policy == str(Policy.EDIT_PROFILE):
             auth_req_config[Prompt.PARAM_KEY.value] = Prompt.NONE.value
         self._generate_and_append_state_to_context_and_request(auth_req_config)
-        self._adapter.identity_context.last_used_b2c_policy = policy
+        self._adapter.identity_context_data.last_used_b2c_policy = policy
         return self._client_factory(policy).get_authorization_request_url(**auth_req_config)
 
     @require_context_adapter
@@ -127,8 +111,6 @@ class IdentityWebPython(object):
             # CSRF protection: make sure to check that state matches the one placed in the session in the previous step.
             # This check ensures this app + this same user session made the /authorize request that resulted in this redirect
             # This should always be the first thing verified on redirect.
-            from flask import g
-            lol = g
             self._verify_state(req_params)
             
             self._logger.info("process_auth_redirect: state matches. continuing.")
@@ -136,19 +118,18 @@ class IdentityWebPython(object):
             self._logger.info("process_auth_redirect: no errors found in request params. continuing.")
 
             # get the response_type that was requested, and extract the payload:
-            resp_type = self.auth_request.get(str(ResponseType.PARAM_KEY), None)
+            resp_type = self.auth_request_config.get(str(ResponseType.PARAM_KEY), None)
             payload = self._extract_auth_response_payload(req_params, resp_type)
-            cache = self._adapter.identity_context.token_cache
+            cache = self._adapter.identity_context_data.token_cache
 
             if resp_type in [str(ResponseType.CODE), None]: # code request is default for msal-python if there is no response type specified
                 # we should have a code. Now we must exchange the code for tokens.
-                result = self._x_change_auth_code_for_token(payload, cache)
-                self._parse_x_change_auth_code_for_token_result(result, cache)
+                self._x_change_auth_code_for_token(payload, cache)
             else:
                 raise NotImplementedError(f"response_type {resp_type} is not yet implemented by ms_identity_web_python")
             # self._verify_nonce() # one of the last steps TODO - is this required? msal python takes care of it?
         except AuthSecurityError as ase:
-            self.remove_user()
+            # self.remove_user()
             self._logger.error(f"process_auth_redirect: security violation {ase.args}")
         except OtherAuthError as oae:
             self.remove_user()
@@ -171,24 +152,23 @@ class IdentityWebPython(object):
     @require_context_adapter
     def _x_change_auth_code_for_token(self, code: str, token_cache: SerializableTokenCache = None) -> dict:
         # use the same policy that got us here: depending on /authorize request initiation
-        id_context = self._adapter.identity_context
+        id_context = self._adapter.identity_context_data
         b2c_policy = id_context.last_used_b2c_policy
         client = self._client_factory(b2c_policy, token_cache)
-        return client.acquire_token_by_authorization_code(code, 
-                                                   self.auth_request.get('scopes', None),
-                                                   self.auth_request.get('redirect_uri', None),
+        result = client.acquire_token_by_authorization_code(code, 
+                                                   self.auth_request_config.get('scopes', None),
+                                                   self.auth_request_config.get('redirect_uri', None),
                                                    id_context.nonce)
 
-    def _parse_x_change_auth_code_for_token_result(self, result: dict, cache: SerializableTokenCache) -> None:
         if "error" not in result:
-            id_context = self._adapter.identity_context
             # now we will place the token(s) and auth status into the context for later use:
             self._logger.info("_x_change_auth_code_for_token: successfully x-changed code for token(s)")
             # self._logger.debug(json.dumps(result, indent=4, sort_keys=True))
             id_context.authenticated = True
             id_context._id_token_claims = result.get('id_token_claims', dict()) # TODO: if this is to stay in ctxt, use proper getter/setter
             id_context.username = id_context._id_token_claims.get('name', None)
-            id_context.token_cache = cache
+            id_context.token_cache = token_cache
+            # self._adapter.identity_context.has_changed = True     # need to flag to save the changes.
         else:
             raise TokenExchangeError("_x_change_auth_code_for_token: Auth failed: token request resulted in error\n"
                                         f"{result['error']}: {result.get('error_description', None)}")
@@ -213,10 +193,10 @@ class IdentityWebPython(object):
 
     @require_context_adapter
     def sign_out(self, post_sign_out_url:str = None, username: str = None) -> Any:
-        policy = self.client.get('meta_authority_type', AuthorityType.SINGLE_TENANT)
-        sign_out_url = f'{self.client["authority"]}'
+        policy = self.client_config.get('meta_authority_type', AuthorityType.SINGLE_TENANT)
+        sign_out_url = f'{self.client_config["authority"]}'
         if policy == AuthorityType.B2C:
-            sign_out_url = f'{sign_out_url}{self.policy[str(Policy.SUSI_KEY)]}{SignOut.ENDPOINT.value}'
+            sign_out_url = f'{sign_out_url}{self.policy_config[str(Policy.SUSI_KEY)]}{SignOut.ENDPOINT.value}'
         else:
             sign_out_url = f'{sign_out_url}{SignOut.ENDPOINT.value}'
 
@@ -234,53 +214,43 @@ class IdentityWebPython(object):
     def _generate_and_append_state_to_context_and_request(self, req_param_dict: dict) -> str:
         state = str(uuid4())
         req_param_dict[RequestParameter.STATE.value] = state
-        self._adapter.identity_context.state = state
+        self._adapter.identity_context_data.state = state
         return state
     
     @require_context_adapter
     def _verify_state(self, req_params: dict) -> None:
         state = req_params.get('state', None)
-        session_state = self._adapter.identity_context.state
+        session_state = self._adapter.identity_context_data.state
         # reject states that don't match
         if state is None or session_state != state:
             raise AuthSecurityError("Failed to match request state with session state")
         # don't allow re-use of state
-        self._adapter.identity_context.state = None
+        self._adapter.identity_context_data.state = None
     
     @require_context_adapter
     def _generate_and_append_nonce_to_context_and_request(self, req_param_dict: dict) -> str:
         nonce = str(uuid4())
         req_param_dict[RequestParameter.NONCE.value] = nonce
-        self._adapter.identity_context.nonce = nonce
+        self._adapter.identity_context_data.nonce = nonce
         return nonce
 
     @require_context_adapter
     def _verify_nonce(self, req_params: dict) -> None:
         nonce = req_params.get('nonce', None)
-        session_nonce = self._adapter.identity_context.nonce
+        session_nonce = self._adapter.identity_context_data.nonce
         # reject nonces that don't match
         if nonce is None or session_nonce != nonce:
             raise AuthSecurityError("Failed to match ID token nonce with session nonce")
         # don't allow re-use of nonce
-        self._adapter.identity_context.nonce = None
+        self._adapter.identity_context_data.nonce = None
 
-    # @property
-    # def login_required(self):
-    #     def requires_login(f):
-    #         @wraps(f)
-    #         def assert_login(*args, **kwargs):
-    #             if not self.user_principal.authenticated:
-    #                 raise NotAuthenticatedError()
-    #             return f(*args, *kwargs)
-    #         return assert_login
-    #     return requires_login
-
+    # this is a getter which injects IdentityWebPython instance's self into the decorator.
     @property
     def login_required(self):
         def requires_login(f):
             @wraps(f)
             def assert_login(*args, **kwargs):
-                if not self.user_principal.authenticated:
+                if not self._adapter.identity_context_data.authenticated:
                     raise NotAuthenticatedError()
                 return f(*args, *kwargs)
             return assert_login
@@ -289,7 +259,7 @@ class IdentityWebPython(object):
 ##############################################
 ### assert config dicts have required keys ###
 ##############################################
-def sanity_check(client: dict, b2c_policy: dict, auth_request: dict) -> None:
+def sanity_check_configs(client: dict, b2c_policy: dict, auth_request: dict) -> None:
     required_keys = {'meta_type': ClientType, 'meta_authority_type': AuthorityType, 'client_id': str, 'authority': str}
     for k, t in required_keys.items():
         assert (isinstance(client[k], t) and (len(client[k]) > 0 if t is str else True)), (

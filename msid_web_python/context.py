@@ -3,11 +3,10 @@ import json
 
 # TODO: make this a @dataclass ?
 
-class IdentityContext(object):
-    SESSION_KEY='msal_session_params'
+class IdentityContextData(object):
+    SESSION_KEY='identity_context_data' #TODO: make configurable
 
-    def __init__(self: 'IdentityContext', session: 'a valid session dict', logger: 'Logger') -> None:
-        self._session = session # don't save this
+    def __init__(self) -> None:
         self._authenticated = False
         self._username = "anonymous"
         self._token_cache = None
@@ -15,45 +14,7 @@ class IdentityContext(object):
         self._state = None
         self._id_token_claims = None # does this belong here? TODO: if it does, add getter/setter
         self._last_used_b2c_policy = []
-        self._logger = logger # don't save this
         self.has_changed = False # don't save this
-        
-    @staticmethod
-    def hydrate_from_session(session: 'a valid session dict', logger: 'Logger' = None) -> 'IdentityContext':
-        new_id_context = IdentityContext(session, logger)
-        print(f"******LOAD SESSION ID IS {session.sid}")
-        try:
-            if IdentityContext.SESSION_KEY in session:
-                new_id_context.__dict__.update(session[IdentityContext.SESSION_KEY])
-                print("*******I AM A VALUES: " + json.dumps(session[IdentityContext.SESSION_KEY]))
-            else:
-                print("********NO VALUES FOUND IN SESSION")
-        except Exception as exception:
-            print(f"********* LOAD SESSION ERROR {exception}")
-            if logger:
-                logger.warning("failed to deserialize identity context from session. creating fresh one")
-        print(f"********LOAD SESSION COMPLETE")
-        return new_id_context
-
-    def _save_to_session(self, session) -> None:
-        print(f"SAVE SESSION ID IS {self._session.sid}")
-        try:
-            if self.has_changed or True:
-                print("*******SESSION HAS CHANGED")
-                to_serialize = self.__dict__.copy()
-                to_serialize.pop('_session'); to_serialize.pop('_logger'); to_serialize.pop('has_changed')
-                to_serialize = {k:v for k,v in to_serialize.items() if v is not None}
-                session[IdentityContext.SESSION_KEY] = to_serialize
-                print("*******I AM A VALUES: " + json.dumps(self._session[IdentityContext.SESSION_KEY]))
-                session.modified = True
-                print(f"SAVE SESSION ID COMPLETE")
-            else:
-                print("SESSION HAS NOT CHANGED")
-        except Exception as exception:
-            print("**********EXCEPTION WHILE SAVING SESION")
-            print(exception)
-            if self._logger:
-                self._logger.error("failed to serialize identity context to session!")
 
     @property
     def authenticated(self) -> bool:
@@ -106,7 +67,9 @@ class IdentityContext(object):
 
     @property
     def last_used_b2c_policy(self) -> str:
-        return self._last_used_b2c_policy.pop()
+        if len(self._last_used_b2c_policy):
+            return self._last_used_b2c_policy.pop()
+        return ''
 
     @last_used_b2c_policy.setter
     def last_used_b2c_policy(self, value: str) -> None:

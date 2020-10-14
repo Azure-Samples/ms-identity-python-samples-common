@@ -2,30 +2,28 @@ from abc import ABCMeta, abstractmethod
 try:
     from flask import (
         Flask as flask_app,
-        current_app as flask_current_app, 
         has_request_context as flask_has_request_context,
         session as flask_session,
         request as flask_request,
         redirect as flask_redirect,
         g as flask_g,
         )
+    # from msid_web_python import flask_blueprint
 except:
     pass
 
-from .context import IdentityContext
-
+from .context import IdentityContextData
 from typing import Any, Union
 from functools import partial, wraps
+import json
 
 # decorator to make sure access within request context
 def require_request_context(f):
     @wraps(f)
     def assert_context(self, *args, **kwargs):
         if not flask_has_request_context():
-            self._has_context = False
-            flask_current_app.logger.info(f"{self.__class__.__name__}.{f.__name__}: No request context, aborting")
+            self.logger.info(f"{self.__class__.__name__}.{f.__name__}: No request context, aborting")
         else:
-            self._has_context = True
             return f(self, *args, **kwargs)
     return assert_context
 
@@ -34,10 +32,14 @@ class IdentityWebContextAdapter(metaclass=ABCMeta):
     work within any environment (e.g. Flask, Django, Windows Desktop app, etc) """
     @abstractmethod
     def __init__(self) -> None:
-        self._has_context = False
+        pass
+    
+    @abstractmethod
+    def _on_request_init(self) -> None: 
+        pass
 
     @abstractmethod
-    def _on_context_init(self) -> None: # is this necessary for all adapters?
+    def _on_request_end(self) -> None:
         pass
 
     # TODO: make this dictionary key name configurable on app init
@@ -45,13 +47,13 @@ class IdentityWebContextAdapter(metaclass=ABCMeta):
     def attach_identity_web_util(self, identity_web: 'IdentityWebPython') -> None:
         pass
 
-    @property
+    @abstractmethod # @property
     def has_context(self) -> bool:
-        return self._has_context
+        pass
     
     @abstractmethod # @property
     @require_request_context
-    def identity_context(self) -> 'IdentityContext':
+    def identity_context_data(self) -> 'IdentityContextData':
         pass
     
 
@@ -88,59 +90,72 @@ class IdentityWebContextAdapter(metaclass=ABCMeta):
     def get_request_params_as_dict(self) -> dict:
         pass
 
+    @abstractmethod
+    @require_request_context
+    def _deserialize_identity_context_data_from_session(self) -> 'IdentityContextData':
+        pass
+
+    @abstractmethod
+    @require_request_context
+    def _serialize_identity_context_data_to_session(self) -> None:
+        pass
+
 class FlaskContextAdapter(IdentityWebContextAdapter):
     """Context Adapter to enable IdentityWebPython to work within the Flask environment"""
     def __init__(self, app) -> None:
-        # assert isinstance(app, flask_app)
-        
+        assert isinstance(app, flask_app)
         super().__init__()
-        
-        # self._has_context = True
-        with app.app_context():
-            self.app = app
+        self.app = app
+        with self.app.app_context():
             self.logger = app.logger
-            app.before_request(self._on_context_init)
-            app.teardown_request(self._on_context_end)
-            # app.after_request(self._on_context_end)
+            app.before_request(self._on_request_init)
+            app.after_request(self._on_request_end)
+        
+        from msid_web_python import flask_blueprint as flask_auth_endpoints # this is where our auth-related endpoints are defined
+        self.app.register_blueprint(flask_auth_endpoints.auth)
+        
 
     @property
     @require_request_context
-    def identity_context(self) -> 'IdentityContext':
-        # use g instead of instance var because g is context dependent.
+    def identity_context_data(self) -> 'IdentityContextData':
         # TODO: make the key name configurable
-        if not hasattr(flask_g, 'identity_context'):
-            identity_context = IdentityContext.hydrate_from_session(flask_session, flask_current_app.logger)
-            flask_g.identity_context = identity_context
-        return flask_g.identity_context
+        self.logger.debug("Getting identity_context from g")
+        identity_context_data = flask_g.get(IdentityContextData.SESSION_KEY)
+        if not identity_context_data:
+            identity_context_data = self._deserialize_identity_context_data_from_session()
+            setattr(flask_g, IdentityContextData.SESSION_KEY, identity_context_data)
+        return identity_context_data
 
     # method is called when flask gets an app/request context
-    # Flask-specific startup here?
-    # @flask_current_app.before_request
-    def _on_context_init(self) -> None:
-        print(f"on context init: {flask_session.get('msal_session_params')}")
-        self._has_context = True
-        flask_g.identity_context = IdentityContext
-    
-    def _on_context_end(self, callback) -> None: 
-        print (f"++callback: {callback}")
-        if flask_has_request_context():
-            if 'identity_context' in flask_g and flask_g.identity_context.has_changed:
-                flask_g.identity_context._save_to_session(flask_session)
-                del flask_g.identity_context
-            self._has_context = False
-        return callback
+    # Flask-specific startup here?    
+    def _on_request_init(self) -> None:
+        try:
+            idx = self.identity_context_data # initialize it so it is available to request context
+        except Exception as ex:
+            self.logger.error(f'Adapter failed @ _on_request_init\n{ex}')
+
+    # this is for saving any changes to the identity_context_data
+    def _on_request_end(self, response_to_return=None) -> None:
+        try:
+            if IdentityContextData.SESSION_KEY in flask_g:
+                self._serialize_identity_context_data_to_session()
+        except Exception as ex:
+            self.logger.error(f'flask adapter failed @ _on_request_ended\n{ex}')
+
+        return response_to_return
 
     # TODO: make this dictionary key name configurable on app init
     def attach_identity_web_util(self, identity_web: 'IdentityWebPython') -> None:
         """attach the identity web instance to session so it is accessible everywhere.
         e.g., ms_id_web = current_app.config.get("ms_identity_web")\n
         Also attaches the application logger."""
-        self.app.config['ms_identity_web'] = identity_web
+        with self.app.app_context():
+            self.app.config['ms_identity_web'] = identity_web
         identity_web.set_logger(self.logger)
 
     @property
     def has_context(self) -> bool:
-        return self._has_context
+        return flask_has_request_context()
 
     ### not sure if this method needs to be public yet :/
     @property
@@ -169,8 +184,38 @@ class FlaskContextAdapter(IdentityWebContextAdapter):
             return flask_request.values
         except:
             if self.logger is not None:
-                self.logger.warning("Couldn't get param dict from request, substituting empty dict instead")
+                self.logger.warning("failed to get param dict from request, substituting empty dict instead")
             return dict()
+
+    # does this need to be public method?
+    @require_request_context
+    def _deserialize_identity_context_data_from_session(self) -> 'IdentityContextData':
+        blank_id_context_data = IdentityContextData()
+        try:
+            id_context_from_session = self.session.get(IdentityContextData.SESSION_KEY, dict())
+            blank_id_context_data.__dict__.update(id_context_from_session)
+        except Exception as exception:
+            self.logger.warning(f"failed to deserialize identity context from session: creating empty one\n{exception}")
+        return blank_id_context_data
+
+    # does this need to be public method?
+    @require_request_context
+    def _serialize_identity_context_data_to_session(self) -> None:
+        try:
+            identity_context = self.identity_context_data
+            if identity_context.has_changed:
+                identity_context.has_changed = False
+                identity_context = identity_context.__dict__
+                self.session[IdentityContextData.SESSION_KEY] = identity_context
+        except Exception as exception:
+            self.logger.error(f"failed to serialize identity context to session.\n{exception}")
+
+    
+
+
+
+
+
 
 # the following class is incomplete
 class DjangoContextAdapter(object):
@@ -184,8 +229,8 @@ class DjangoContextAdapter(object):
     
     def _on_context_teardown(self, exception) -> None: 
         self._has_context = False
-        if self.identity_context.has_changed:
-            self.identity_context._save_to_session()
+        if self.identity_context_data.has_changed:
+            self.identity_context_data._save_to_session()
 
     # this function returns Django's request params.
     @require_request_context
@@ -199,5 +244,5 @@ class DjangoContextAdapter(object):
                 raise ValueError("Django request must be POST or GET")
         except:
             if self.logger is not None:
-                self.logger.warning("Couldn't get param dict, substituting empty dict instead")
+                self.logger.warning("Failed to get param dict, substituting empty dict instead")
             return dict()
