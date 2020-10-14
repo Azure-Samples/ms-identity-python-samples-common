@@ -105,7 +105,7 @@ class IdentityWebPython(object):
         return self._client_factory(policy).get_authorization_request_url(**auth_req_config)
 
     @require_context_adapter
-    def process_auth_redirect(self) -> None:
+    def process_auth_redirect(self, next_action) -> None:
         req_params = self._adapter.get_request_params_as_dict()
         try:
             # CSRF protection: make sure to check that state matches the one placed in the session in the previous step.
@@ -116,7 +116,7 @@ class IdentityWebPython(object):
             self._logger.info("process_auth_redirect: state matches. continuing.")
             self._parse_redirect_errors(req_params)
             self._logger.info("process_auth_redirect: no errors found in request params. continuing.")
-
+            
             # get the response_type that was requested, and extract the payload:
             resp_type = self.auth_request_config.get(str(ResponseType.PARAM_KEY), None)
             payload = self._extract_auth_response_payload(req_params, resp_type)
@@ -128,6 +128,7 @@ class IdentityWebPython(object):
             else:
                 raise NotImplementedError(f"response_type {resp_type} is not yet implemented by ms_identity_web_python")
             # self._verify_nonce() # one of the last steps TODO - is this required? msal python takes care of it?
+            return next_action
         except AuthSecurityError as ase:
             # self.remove_user()
             self._logger.error(f"process_auth_redirect: security violation {ase.args}")
@@ -138,16 +139,17 @@ class IdentityWebPython(object):
             self.remove_user()
             self._logger.error(f"process_auth_redirect: b2c pwd {b2cpwe.args}")
             pw_reset_url = self.get_auth_url(str(Policy.PASSWORD_RESET))
-            self._adapter.redirect_to_absolute_url(pw_reset_url)
+            return self._adapter.redirect_to_absolute_url(pw_reset_url)
         except TokenExchangeError as ter:
             self.remove_user()
             self._logger.error(f"process_auth_redirect: token xchange {ter.args}")
         except BaseException as other:
             self.remove_user()
             self._logger.error(f"process_auth_redirect: token xchange {other.args}")
-
-        self._logger.info("process_auth_redirect: exiting auth code method. redirecting... ") 
-        # put the redirect back to the main app here or not? TODO
+        finally:
+            self._logger.info("process_auth_redirect: exiting auth code method. redirecting... ") 
+        
+        return next_action #TODO replace this with caller the adapter for internal redirect
 
     @require_context_adapter
     def _x_change_auth_code_for_token(self, code: str, token_cache: SerializableTokenCache = None) -> dict:
@@ -177,7 +179,7 @@ class IdentityWebPython(object):
         if str(AADError.ERROR_CODE_PARAM_KEY) in req_params:
             # we have an error. get the error code to interpret it:
             error_code = req_params.get(str(AADError.ERROR_CODE_PARAM_KEY), None)
-            if error_code == str(AADError.B2C_FORGOT_PASSWORD_ERROR_CODE):
+            if error_code.startswith(str(AADError.B2C_FORGOT_PASSWORD_ERROR_CODE)):
                 # it's a b2c password reset error
                 raise B2CPasswordError("B2C password reset request")
             else:

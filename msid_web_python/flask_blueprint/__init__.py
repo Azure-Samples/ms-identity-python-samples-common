@@ -40,8 +40,8 @@ def edit_profile():
 @auth.route('/redirect')
 def aad_redirect():
     current_app.logger.debug("aad_redirect: request received at redirect endpoint")
-    get_ms_id_web().process_auth_redirect() # TODO: pass in redirect URL here.
-    return redirect(url_for('index'))
+    next_action = redirect(url_for('index'))
+    return get_ms_id_web().process_auth_redirect(next_action) # TODO: pass in redirect URL here.
 
 @auth.route('/sign_out')
 def sign_out():
