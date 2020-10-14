@@ -11,7 +11,6 @@ from aad_config import config as aad_config
 from msid_web_python import IdentityWebPython, Policy
 from msid_web_python.adapters import FlaskContextAdapter
 from msid_web_python.errors import NotAuthenticatedError
-# from msid_web_python.flask_blueprint import
 
 """
 Instructions for running the app:
@@ -40,16 +39,15 @@ def register_error_handlers(app):
         current_app.logger.info(f"{request.url}: {err}")
         return render_template('auth/401.html')
     # when a not authenticated error happens, invoke this method:
-    # NotAuthenticatedError is both flask 401 and IdWebPy base autherror
     app.register_error_handler(NotAuthenticatedError, not_authenticated)
+    # NotAuthenticatedError is both flask 401 and IdWebPy based autherror
 
 def create_app(name='authenticate_users_b2c', root_path=Path(__file__).parent, config_dict=None, aad_config_dict=None):
     app = Flask(name, root_path=root_path)
     app.config['ENV'] = os.environ.get('FLASK_ENV', 'development')
     if app.config.get('ENV') == 'production':
         app.logger.level=logging.INFO
-        # supply a production config here
-        # and remove this line:
+        # supply a production config here and remove this line:
         raise ValueError('define a production config')
     else:
         app.config["DEBUG"] = os.environ.get('FLASK_DEBUG', 1)
@@ -59,26 +57,16 @@ def create_app(name='authenticate_users_b2c', root_path=Path(__file__).parent, c
     if config_dict is not None:
         app.config.from_mapping(config_dict)
     
-    # init the serverside session on the app
-    Session(app)
+    Session(app) # init the serverside session on the app
+    register_error_handlers(app) # register error handlers
     
-    # # We have to push the context before registering auth endpoints blueprint
-    # app.app_context().push()
-
-    # from msid_web_python import flask_blueprint as auth_endpoints# this is where our auth-related endpoints are defined
-    # app.register_blueprint(auth_endpoints.auth)
-    # ms identity web for python: 
-    adapter = FlaskContextAdapter(app) # instantiate the flask adapter
+    adapter = FlaskContextAdapter(app) # ms identity web for python: instantiate the flask adapter
     ms_identity_web = IdentityWebPython(aad_config, adapter) # then instantiate ms identity web for python:
-    # register error handlers
-    register_error_handlers(app)
-    # the auth endpoints are: sign_in, redirect, sign_out, post_sign-out, # sign_in_status, token_details, edit_profile
+    # the auth endpoints are: sign_in, redirect, sign_out, post_sign-out, edit_profile
 
-    # TODO hook this up from adapter ?
-    @app.context_processor
+    @app.context_processor # TODO hook this up from adapter ? is there any use-case for demo-ing this?
     def user_principal_processor():
         """this context processor adds user principal to all the views"""
-        # print(f'************ UP is {ms_identity_web.user_principal} **********')
         return dict(ms_id_user_principal = ms_identity_web.id_data)
 
     @app.route('/')
@@ -87,14 +75,13 @@ def create_app(name='authenticate_users_b2c', root_path=Path(__file__).parent, c
         return render_template('auth/status.html')
 
     @app.route('/token_details')
-    @ms_identity_web.login_required
+    @ms_identity_web.login_required # <-- user only needs to hook up authN-required endpoint like this
     def token_details():
         """show the token details, if authenticated"""
         current_app.logger.info("token_details: user is authenticated, will display token details")
         return render_template('auth/token.html')
 
     return app
-
 
 if __name__ == '__main__':
     app=create_app()

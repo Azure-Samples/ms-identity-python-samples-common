@@ -130,11 +130,11 @@ class IdentityWebPython(object):
             # self._verify_nonce() # one of the last steps TODO - is this required? msal python takes care of it?
             return next_action
         except AuthSecurityError as ase:
-            # self.remove_user()
+            self.remove_user()
             self._logger.error(f"process_auth_redirect: security violation {ase.args}")
         except OtherAuthError as oae:
             self.remove_user()
-            self._logger.error(f"process_auth_redirect: other auth {oae.args}")
+            self._logger.error(f"process_auth_redirect: other auth error {oae.args}")
         except B2CPasswordError as b2cpwe:
             self.remove_user()
             self._logger.error(f"process_auth_redirect: b2c pwd {b2cpwe.args}")
@@ -149,7 +149,7 @@ class IdentityWebPython(object):
         finally:
             self._logger.info("process_auth_redirect: exiting auth code method. redirecting... ") 
         
-        return next_action #TODO replace this with caller the adapter for internal redirect
+        return next_action #TODO replace this with call to the adapter for internal redirect
 
     @require_context_adapter
     def _x_change_auth_code_for_token(self, code: str, token_cache: SerializableTokenCache = None) -> dict:
