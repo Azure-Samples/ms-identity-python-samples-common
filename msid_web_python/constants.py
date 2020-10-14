@@ -51,14 +51,14 @@ class Prompt(Enum):
 
 ### Client Type ###
 class ClientType(Enum):
-    CONFIDENTIAL = 1
-    PUBLIC = 2
+    CONFIDENTIAL = 'CONFIDENTIAL'
+    PUBLIC = 'B2C'
 
 ### Client Tenant Type ###
 class AuthorityType(Enum):
-    SINGLE_TENANT = 1
-    MULTI_TENANT = 2
-    B2C = 3
+    SINGLE_TENANT = 'SINGLE'
+    MULTI_TENANT = 'MULTI'
+    B2C = 'B2C'
     
 
 ### AZURE ACTIVE DIRECTORY ERROR HANDLING CONSTANTS ###

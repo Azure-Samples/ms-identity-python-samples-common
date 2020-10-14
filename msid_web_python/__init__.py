@@ -151,7 +151,9 @@ class IdentityWebPython(object):
         finally:
             self._logger.info("process_auth_redirect: exiting auth code method. redirecting... ") 
         
-        return next_action #TODO replace this with call to the adapter for internal redirect
+        #TODO: GET /auth/redirect?error=interaction_required&error_description=AADB2C90077%3a+User+does+not+have+an+existing+session+and+request+prompt+parameter+has+a+value+of+%27None%27.
+        
+        return next_action #TODO: replace this with call to the adapter for internal redirect
 
     @require_context_adapter
     def _x_change_auth_code_for_token(self, code: str, token_cache: SerializableTokenCache = None) -> dict:
