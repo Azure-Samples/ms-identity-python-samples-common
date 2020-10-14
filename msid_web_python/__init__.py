@@ -18,7 +18,8 @@ from flask import session
 # TODO: 
 #  ##### IMPORTANT #####
 # features:
-# - decorator for login_required
+# - edit profile interaction required error on edit profile if no token_cache or expired
+# - password reset should use login hint/no interaction?
 # - decorator for filter by security groups
 # - decorator for app roles RBAC
 # - auth failure handler to handle un-auth access?
@@ -54,6 +55,7 @@ class IdentityWebPython(object):
     def __init__(self, config: dict, adapter: FlaskContextAdapter = None, logger: Logger = None) -> None:
         self._logger = logger or Logger('IdentityWebPython')
         self._adapter = None
+        self.config = config
         self.client_config = config.get('client')
         self.policy_config = config.get('policy')
         self.auth_request_config = config.get('auth_request')

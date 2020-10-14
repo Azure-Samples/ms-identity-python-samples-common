@@ -1,0 +1,32 @@
+{"meta": {
+    "client_type": "CONFIDENTIAL",
+    "authority_type": "B2C"
+    },
+"client": {
+    "client_id": "e5c690fe-05df-4035-8f95-f6820851c584",
+    "client_credential": "BpQ.A3ntu20jkUCcR-QluvN359DU--71ef",
+    "authority": "https://fabrikamb2c.b2clogin.com/fabrikamb2c.onmicrosoft.com"
+    },
+"b2c_policy": {
+    "susi": "/b2c_1_susi",
+    "password": "/b2c_1_edit_profile",
+    "profile": "/b2c_1_reset"
+    },
+"auth_request": {
+    "redirect_uri": "configured by the app automatically",
+    "scopes": []
+    },
+"utils_lib": {
+    "flask": {
+        "id_web_location": "ms_identity_web"
+    },
+    "auth_endpoints": {
+        "prefix": "/auth",
+        "sign_in": "/sign_in",
+        "edit_profile": "/edit_profile",
+        "redirect": "/redirect",
+        "sign_out": "/sign_out",
+        "post_sign_out": "/post_sign_out"
+    }
+}
+}

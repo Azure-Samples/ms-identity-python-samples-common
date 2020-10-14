@@ -1,8 +1,8 @@
 from msid_web_python.constants import Prompt, ResponseType, ClientType, AuthorityType, SignOut, Policy
 import app_config
 
+# TODO: reduce complexity of the config file, set defaults in a config class
 ###################################### client config params #######################################################################
-
 client = dict()
 # client type: confidential or public
 client['meta_type']: ClientType = ClientType.CONFIDENTIAL
@@ -46,8 +46,12 @@ sign_out_url_with_redirect = f'{_aad_b2c_sign_out_url}?{SignOut.REDIRECT_PARAM_K
 ################################
 ### place all in main config ###
 ################################
+utils_lib = dict()
+utils_lib['flask_key'] ='ms_identity_web'
+
 
 config = dict()
+config['utils_lib'] = utils_lib
 config['client'] = client
 config['policy'] = b2c_policy
 config['auth_request'] = auth_request

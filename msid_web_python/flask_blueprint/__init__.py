@@ -8,6 +8,7 @@ from msid_web_python import IdentityWebPython, Policy
 from msid_web_python.errors import NotAuthenticatedError
 
 import msal, uuid, json
+from aad_config import utils_lib as utils_cfg
 
 # TODO: extend blueprint class and set these routes as pre-defined routes,
 #       and allow user to pass custom data to it
@@ -18,11 +19,10 @@ import msal, uuid, json
 auth = Blueprint('auth', __name__, url_prefix="/auth", static_folder='static', template_folder="templates")
 
 # grab ms_id_web from app's global dictionary - this should have been attached by instantiating MSIDWebPy.
-# TODO: make this dictionary key name configurable on app init
-# ms_identity_web = current_app.config.get('ms_identity_web')
 
 def get_ms_id_web():
-    return current_app.config.get('ms_identity_web')
+    config_key = utils_cfg.get('id_web_location', 'ms_identity_web')
+    return current_app.config.get(config_key)
 
 @auth.route('/sign_in')
 def sign_in():
