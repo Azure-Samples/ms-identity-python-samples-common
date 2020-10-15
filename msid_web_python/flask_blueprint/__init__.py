@@ -27,7 +27,6 @@ import msal, uuid, json
 auth = Blueprint('auth', __name__, url_prefix="/auth", static_folder='static', template_folder="templates")
 
 # grab ms_id_web from app's global dictionary - this should have been attached by instantiating MSIDWebPy.
-
 def get_ms_id_web():
     # current_app.aad_config.
     config_key = current_app.config.get('id_web_location', 'ms_identity_web')
@@ -36,23 +35,23 @@ def get_ms_id_web():
 @auth.route('/sign_in')
 def sign_in():
     current_app.logger.debug("sign_in: request received at sign in endpoint. will redirect browser to login")
-    auth_url = get_ms_id_web().get_auth_url('/b2c_1_susi',redirect_uri=url_for('.aad_redirect', _external=True))
+    auth_url = get_ms_id_web().get_auth_url(redirect_uri=url_for('.aad_redirect', _external=True))
     return redirect(auth_url)
 
 @auth.route('/edit_profile')
 def edit_profile():
     current_app.logger.debug("edit_profile: request received at edit profile endpoint. will redirect browser to edit profile")
-    # TODO: for ease of use, this should become get_ms_id_web().b2c_edit_profile()?
-    auth_url = get_ms_id_web().get_auth_url(policy='/b2c_1_edit_profile',
-                    redirect_uri=url_for('.aad_redirect', _external=True))
+    auth_url = get_ms_id_web().get_auth_url(
+            redirect_uri=url_for('.aad_redirect', _external=True),
+            policy=get_ms_id_web().aad_config.b2c.get('profile'))
     return redirect(auth_url)
 
 @auth.route('/redirect')
 def aad_redirect():
     current_app.logger.debug("aad_redirect: request received at redirect endpoint")
     next_action = redirect(url_for('index'))
-    return get_ms_id_web().process_auth_redirect(next_action,
-                    redirect_uri=url_for('.aad_redirect',_external=True)) # TODO: pass in redirect URL here.
+    return get_ms_id_web().process_auth_redirect(next_action, # TODO: fix 'next_action' -> add redirect to flask adapter
+                    redirect_uri=url_for('.aad_redirect',_external=True)) 
 
 @auth.route('/sign_out')
 def sign_out():

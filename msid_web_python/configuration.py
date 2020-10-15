@@ -32,7 +32,7 @@ def aad_config(file_path=None, environ_path_key=None) -> None:
     return aad_config
 
 def parse_ini(file_path: str):
-    parser = ConfigParser()
+    parser = ConfigParser(inline_comment_prefixes="#")
     parser.read(file_path)
     for section in parser.sections():
         section_dict = dict(parser.items(section))
@@ -77,6 +77,8 @@ def sanity_check_configs() -> None:
             assert aad_config.b2c.get(key,'').startswith('/b2c_1'), (
                 f"`{key}` value under b2c must be non-empty string if "
                 "'authority_type'is AuthorityType.B2C")
+    else:
+        aad_config.__setattr__('b2c', dict())
 
     if aad_config.type['framework'] == 'FLASK':
         assert(aad_config.utils_lib_flask.get('id_web_location',None) is not None)

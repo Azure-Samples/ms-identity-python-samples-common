@@ -71,34 +71,43 @@ class IdentityWebPython(object):
     def set_logger(self, logger: Logger) -> None:
         self._logger = logger
 
-    def _client_factory(self, policy: str = "", token_cache: SerializableTokenCache = None) -> ConfidentialClientApplication:
+    def _client_factory(self, policy: str = None, token_cache: SerializableTokenCache = None, **kwargs) -> ConfidentialClientApplication:
         client_config = self.aad_config.client.copy() # need to make a copy since contents must be mutated
-        client_config['authority'] = f'{self.aad_config.client["authority"]}{policy}'
+        client_config['authority'] = f'{self.aad_config.client["authority"]}{policy if policy else ""}'
+        if token_cache:
+            client_config['token_cache'] = token_cache
 
-        # configure based on settings
-        # TODO: choose client type based on config - currently only does confidential
-        # the following line removes the meta-data that msal lib doesn't consume: 
-        # TODO: update so that these meta keys never end up here to begin with.
-        
-        client_config['token_cache'] = token_cache or None
-
-        return ConfidentialClientApplication(**client_config)
+        return ConfidentialClientApplication(**client_config)        
 
     @require_context_adapter
-    def get_auth_url(self, policy: str = "", redirect_uri: str = None) -> str:
-        auth_req_config = self.aad_config.auth_request.copy() # need to make a copy since contents must be mutated
-        # remove prompt = select_account if edit profile policy is selected
-        # do not make user pick idp again:
-        authority_type = self.aad_config.type['authority_type']
-        if authority_type == str(AuthorityType.B2C):
-            if (policy == self.aad_config.b2c.get('profile') and 
-                auth_req_config.get(Prompt.PARAM_KEY, None) == Prompt.SELECT_ACCOUNT):
-                auth_req_config.pop(Prompt.PARAM_KEY, None)
+    def get_auth_url(self, redirect_uri:str = None, policy: str = None, 
+                    token_cache: SerializableTokenCache = None, **kwargs):
+        """ Gets the auth URL that the user must be redirected to. Automatically
+            configures B2C if app type is set to B2C."""
+        auth_req_config = self.aad_config.auth_request.copy()
+        auth_req_config.update(**kwargs)
         if redirect_uri:
             auth_req_config[str(RequestParameter.REDIRECT_URI)] = redirect_uri
+        elif 'redirect_uri' not in auth_req_config:
+            auth_req_config[str(RequestParameter.REDIRECT_URI)] = self.aad_config.auth_request.get('redirect_uri')
+
+        if self.aad_config.type['authority_type'] == str(AuthorityType.B2C):
+            auth_req_config, policy = self.prepare_b2c_auth(auth_req_config, policy)
         self._generate_and_append_state_to_context_and_request(auth_req_config)
-        self._adapter.identity_context_data.last_used_b2c_policy = policy
         return self._client_factory(policy).get_authorization_request_url(**auth_req_config)
+    
+    # TODO: should require authenticated for edit profile:
+    def prepare_b2c_auth(self, auth_req_config, policy):
+        if policy is None:
+            policy = self.aad_config.b2c.get('susi')
+        elif (policy != self.aad_config.b2c.get('susi') and
+                auth_req_config.get(Prompt.PARAM_KEY, None) == Prompt.SELECT_ACCOUNT):
+                # remove prompt = select_account if edit profile policy 
+                # or pw reset is selected. do not make user pick idp again:
+                auth_req_config.pop(Prompt.PARAM_KEY, None)
+        self._adapter.identity_context_data.last_used_b2c_policy = policy
+        return auth_req_config, policy
+
 
     @require_context_adapter
     def process_auth_redirect(self, next_action, redirect_uri: str = None) -> None:

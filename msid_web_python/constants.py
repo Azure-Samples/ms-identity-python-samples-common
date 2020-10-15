@@ -1,17 +1,17 @@
 from enum import Enum
 
-class Policy(Enum):
-    def __str__(self):
-        return str(self.value)
-    @staticmethod
-    def set_enum_values(config: dict):
-        Policy.SIGN_UP_SIGN_IN = config[str(Policy.SUSI_KEY)]
-        Policy.PASSWORD_RESET = config[str(Policy.PASSWORD_KEY)]
-        Policy.EDIT_PROFILE = config[str(Policy.PROFILE_KEY)]
-    SUSI_KEY = 'susi'
-    PASSWORD_KEY = 'password'
-    PROFILE_KEY = 'profile'
-    NONE = ''
+# class Policy(Enum):
+#     def __str__(self):
+#         return str(self.value)
+#     @staticmethod
+#     def set_enum_values(config: dict):
+#         Policy.SIGN_UP_SIGN_IN = config['susi']
+#         Policy.PASSWORD_RESET = config[str(Policy.PASSWORD_KEY)]
+#         Policy.EDIT_PROFILE = config[str(Policy.PROFILE_KEY)]
+#     SUSI_KEY = 'susi'
+#     PASSWORD_KEY = 'password'
+#     PROFILE_KEY = 'profile'
+#     NONE = ''
 
 ### AZURE AD AUTH OPTIONS ###
 class ResponseType(Enum):
@@ -73,8 +73,8 @@ class AuthorityType(Enum):
     @classmethod
     def has_key(cls, name):
         return name in cls.__members__
-    SINGLE_TENANT = 'SINGLE'
-    MULTI_TENANT = 'MULTI'
+    SINGLE_TENANT = 'SINGLE_TENANT'
+    MULTI_TENANT = 'MULTI_TENANT'
     B2C = 'B2C'
     
 
