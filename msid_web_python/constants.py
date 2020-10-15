@@ -27,12 +27,16 @@ class ResponseType(Enum):
     NONE = 'none'
 
 class ResponseMode(Enum):
+    def __str__(self):
+        return str(self.value)
     QUERY = 'query' # this is the default ResponseMode for ResponseType.CODE
     FRAGMENT = 'fragment'
     FORM_POST = 'form_post' 
 
 
 class RequestParameter(Enum):
+    def __str__(self):
+        return str(self.value)
     RESPONSE_TYPE = 'response_type'
     PROMPT = 'prompt'
     REDIRECT_URI = 'redirect_uri'
@@ -42,7 +46,9 @@ class RequestParameter(Enum):
     CLIENT_ID = 'client_id'
 
 
-class Prompt(Enum):   
+class Prompt(Enum):
+    def __str__(self):
+        return str(self.value) 
     PARAM_KEY = 'prompt'
     LOGIN = 'login' # causes user to re-enter credentials even if logged in already - negates sso
     NONE = 'none'   # opposite of prompt=login - no prompt displayed if user is already logged in
@@ -51,11 +57,22 @@ class Prompt(Enum):
 
 ### Client Type ###
 class ClientType(Enum):
+    def __str__(self):
+        return str(self.value)
+    @classmethod
+    def has_key(cls, name):
+        return name in cls.__members__
     CONFIDENTIAL = 'CONFIDENTIAL'
     PUBLIC = 'B2C'
+    
 
 ### Client Tenant Type ###
 class AuthorityType(Enum):
+    def __str__(self):
+        return str(self.value)
+    @classmethod
+    def has_key(cls, name):
+        return name in cls.__members__
     SINGLE_TENANT = 'SINGLE'
     MULTI_TENANT = 'MULTI'
     B2C = 'B2C'

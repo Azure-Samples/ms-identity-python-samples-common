@@ -8,7 +8,6 @@ try:
         redirect as flask_redirect,
         g as flask_g,
         )
-    # from msid_web_python import flask_blueprint
 except:
     pass
 
@@ -110,10 +109,7 @@ class FlaskContextAdapter(IdentityWebContextAdapter):
             self.logger = app.logger
             app.before_request(self._on_request_init)
             app.after_request(self._on_request_end)
-        
-        from msid_web_python import flask_blueprint as flask_auth_endpoints # this is where our auth-related endpoints are defined
-        self.app.register_blueprint(flask_auth_endpoints.auth)
-        
+
 
     @property
     @require_request_context
@@ -149,10 +145,14 @@ class FlaskContextAdapter(IdentityWebContextAdapter):
         """attach the identity web instance to session so it is accessible everywhere.
         e.g., ms_id_web = current_app.config.get("ms_identity_web")\n
         Also attaches the application logger."""
-        config_key = identity_web.config["utils_lib"].get('id_web_location', 'ms_identity_web')
+        config_key = identity_web.aad_config.utils_lib_flask.get('id_web_location', 'ms_identity_web')
         with self.app.app_context():
             self.app.config[config_key] = identity_web
         identity_web.set_logger(self.logger)
+        from msid_web_python import flask_blueprint as flask_auth_endpoints # this is where our auth-related endpoints are defined
+        # flask_auth_endpoints.auth.__setattr__('aad_config', identity_web.aad_config)
+        self.app.register_blueprint(flask_auth_endpoints.auth)
+        
 
     @property
     def has_context(self) -> bool:

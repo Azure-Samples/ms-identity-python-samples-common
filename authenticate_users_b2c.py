@@ -7,10 +7,11 @@ from flask_session import Session
 from pathlib import Path
 
 import app_config as dev_config
-from aad_config import config as aad_config
-from msid_web_python import IdentityWebPython, Policy
+from msid_web_python import IdentityWebPython
 from msid_web_python.adapters import FlaskContextAdapter
 from msid_web_python.errors import NotAuthenticatedError
+from msid_web_python.configuration import aad_config
+
 
 """
 Instructions for running the app:
@@ -62,7 +63,7 @@ def create_app(name='authenticate_users_b2c', root_path=Path(__file__).parent, c
     # TODO: more descriptive reason for why we have error handler
     
     adapter = FlaskContextAdapter(app) # ms identity web for python: instantiate the flask adapter
-    ms_identity_web = IdentityWebPython(aad_config, adapter) # then instantiate ms identity web for python:
+    ms_identity_web = IdentityWebPython(aad_config('aad.config.ini'), adapter) # then instantiate ms identity web for python:
     # the auth endpoints are: sign_in, redirect, sign_out, post_sign-out, edit_profile
 
     @app.context_processor # TODO hook this up from adapter ? is there any use-case for demo-ing this?
