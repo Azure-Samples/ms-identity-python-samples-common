@@ -47,7 +47,7 @@ def require_context_adapter(f):
         
 class IdentityWebPython(object):
 
-    def __init__(self, aad_config: dict, adapter: FlaskContextAdapter = None, logger: Logger = None) -> None:
+    def __init__(self, aad_config: 'AADConfig', adapter: FlaskContextAdapter = None, logger: Logger = None) -> None:
         self._logger = logger or Logger('IdentityWebPython')
         self._adapter = None
         self.aad_config = aad_config
@@ -59,8 +59,7 @@ class IdentityWebPython(object):
     def id_data(self) -> IdentityContextData:
         return self._adapter.identity_context_data
     
-    # this might behave differently in django... to be determined.
-    # therefore split to separate flask method:
+    # TODO: make the call from the adapter to this and reverse the config process?
     def set_adapter(self, adapter: IdentityWebContextAdapter) -> None:                
         if isinstance(adapter, FlaskContextAdapter):
             self._adapter = adapter

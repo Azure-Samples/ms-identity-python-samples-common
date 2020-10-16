@@ -10,7 +10,7 @@ import app_config as dev_config
 from msid_web_python import IdentityWebPython
 from msid_web_python.adapters import FlaskContextAdapter
 from msid_web_python.errors import NotAuthenticatedError
-from msid_web_python.configuration import aad_config
+from msid_web_python.configuration import AADConfig
 
 
 """
@@ -63,13 +63,8 @@ def create_app(name='authenticate_users_b2c', root_path=Path(__file__).parent, c
     # TODO: more descriptive reason for why we have error handler
     
     adapter = FlaskContextAdapter(app) # ms identity web for python: instantiate the flask adapter
-    ms_identity_web = IdentityWebPython(aad_config('aad.b2c.config.ini'), adapter) # then instantiate ms identity web for python:
+    ms_identity_web = IdentityWebPython(AADConfig(file_path='aad.b2c.config.ini'), adapter) # then instantiate ms identity web for python:
     # the auth endpoints are: sign_in, redirect, sign_out, post_sign-out, edit_profile
-
-    @app.context_processor # TODO hook this up from adapter ? is there any use-case for demo-ing this?
-    def user_principal_processor():
-        """this context processor adds user principal to all the views"""
-        return dict(ms_id_user_principal = ms_identity_web.id_data)
 
     @app.route('/')
     @app.route('/sign_in_status')

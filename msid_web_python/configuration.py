@@ -14,76 +14,85 @@ class AADConfig(object): # faster access to attributes with slots.
         'auth_endpoints_django'
     )
 
-parsed_config = None
+    @classmethod
+    def __init__(cls, file_path=None, environ_path_key=None) -> None:
+        if file_path is None:
+            file_path = os.environ.get(environ_path_key, 'aad.config.ini')
+        if file_path.endswith('.ini'):
+            cls.parse_ini(file_path)
+        elif file_path.endswith('.json'):
+            cls.parse_json(file_path)
+        else:
+            raise NotImplementedError
+        cls.sanity_check_configs()
 
-def aad_config(file_path=None, environ_path_key=None) -> None:
-    if parsed_config is not None:
-        return parsed_config
+    @classmethod
+    def parse_ini(cls, file_path: str):
+        # parsed_config = AADConfig()
+        parser = ConfigParser(inline_comment_prefixes="#")
+        parser.read(file_path)
+        for section in parser.sections():
+            section_dict = dict(parser.items(section))
+            setattr(cls, section, section_dict)
 
-    if file_path is None:
-        file_path = os.environ.get(environ_path_key, 'AAD_INI_PATH')
-    if file_path.endswith('.ini'):
-        parse_ini(file_path)
-    elif file_path.endswith('.json'):
-        parse_json(file_path)
-    else:
+    @classmethod
+    def parse_json(cls, file_path: str):
         raise NotImplementedError
+        import json
+        from types import SimpleNamespace
+        with open(file_path, 'r') as cfg:
+            config = json.load(cls, object_hook=lambda d: SimpleNamespace(**d))
+        cls.sanity_check_configs()
 
-    return aad_config
+    @classmethod
+    def parse_yml(cls, file_path: str):
+        raise NotImplementedError
+        try:
+            import yaml
+        except:
+            print("can't import yaml")
+            raise ImportError
+        
+    @classmethod
+    def sanity_check_configs(cls) -> None:
+        required = ('type', 'client', 'auth_request', 'auth_endpoints_flask')
+        for req in required: assert hasattr(cls, req) 
+        scopes = cls.auth_request.get('scopes')
+        if not isinstance(scopes, (set,list,tuple)):
+            scopes = str(scopes).strip('[]')
+            scopes = list(str(scopes).split(','))
+            if not isinstance(scopes, (list)): raise AttributeError("scopes must be properly formatted")
+            cls.auth_request['scopes'] = scopes
+        assert ClientType.has_key(cls.type.get('client_type',None)), "'client_type' must be non-empty string"
+        assert AuthorityType.has_key(cls.type.get('authority_type',None)), "'authority_type' must be non-empty string"
+        assert cls.type.get('framework',None) == 'FLASK', "only flask supported right now"
 
-def parse_ini(file_path: str):
-    parser = ConfigParser(inline_comment_prefixes="#")
-    parser.read(file_path)
-    for section in parser.sections():
-        section_dict = dict(parser.items(section))
-        aad_config.__setattr__(section, section_dict)
-    sanity_check_configs()
+        assert str(cls.client.get('client_id', '')), "'client_id' must be non-empty string"
+        assert str(cls.client.get('authority','')), "'authority' must be non-empty string"
 
-def parse_json(file_path: str):
-    import json
-    with open(file_path, 'r') as cfg:
-        config = json.load(cfg)
+        if ClientType(cls.type.get('client_type')) is ClientType.CONFIDENTIAL:
+            assert cls.client.get("client_credential",None) is not None, (
+            "'client_credential' must be non-empty string if "
+            "'client_type' is ClientType.CONFIDENTIAL")
 
-    for key, value in config.items():
-        aad_config.__setattr__(key, value)
-    sanity_check_configs()
+        if AuthorityType(cls.type['authority_type']) is AuthorityType.B2C:
+            assert isinstance(cls.b2c, dict), (
+                "config must contain 'b2c' section if 'authority_type' is AuthorityType.B2C")
 
-def sanity_check_configs() -> None:
-    scopes = aad_config.auth_request.get('scopes')
-    if not isinstance(scopes, (set,list,tuple)):
-        scopes = str(scopes).strip('[]')
-        scopes = list(str(scopes).split(','))
-        if not isinstance(scopes, (list)): raise AttributeError("scopes must be properly formatted")
-        aad_config.auth_request['scopes'] = scopes
-    assert ClientType.has_key(aad_config.type.get('client_type',None)), "'client_type' must be non-empty string"
-    assert AuthorityType.has_key(aad_config.type.get('authority_type',None)), "'authority_type' must be non-empty string"
-    assert aad_config.type.get('framework',None) == 'FLASK', "only flask supported right now"
+            # assert b2c has required keys:            
+            required_keys = ['susi','password', 'profile']
+            for key in required_keys:
+                assert cls.b2c.get(key,'').startswith('/b2c_1'), (
+                    f"`{key}` value under b2c must be non-empty string if "
+                    "'authority_type'is AuthorityType.B2C")
+        else:
+            cls.__setattr__('b2c', dict())
 
-    assert str(aad_config.client.get('client_id', '')), "'client_id' must be non-empty string"
-    assert str(aad_config.client.get('authority','')), "'authority' must be non-empty string"
+        if cls.type['framework'] == 'FLASK':
+            # assert(cls.utils_lib_flask.get('id_web_location',None) is not None)
+            required_keys = ['prefix', 'sign_in', 'edit_profile', 'redirect', 'sign_out', 'post_sign_out']
+            for key in required_keys:
+                assert cls.auth_endpoints_flask.get(key, '').startswith('/'), (
+                    f"The `{key}` value under 'auth_endpoints_flask must be string starting with / if "
+                    "'framework' is FLASK")
 
-    if ClientType(aad_config.type.get('client_type')) is ClientType.CONFIDENTIAL:
-        assert aad_config.client.get("client_credential",None) is not None, (
-        "'client_credential' must be non-empty string if "
-        "'client_type' is ClientType.CONFIDENTIAL")
-
-    if AuthorityType(aad_config.type['authority_type']) is AuthorityType.B2C:
-        assert isinstance(aad_config.b2c, dict), (
-            "config must contain 'b2c' section if 'authority_type' is AuthorityType.B2C")
-
-        # assert b2c has required keys:            
-        required_keys = ['susi','password', 'profile']
-        for key in required_keys:
-            assert aad_config.b2c.get(key,'').startswith('/b2c_1'), (
-                f"`{key}` value under b2c must be non-empty string if "
-                "'authority_type'is AuthorityType.B2C")
-    else:
-        aad_config.__setattr__('b2c', dict())
-
-    if aad_config.type['framework'] == 'FLASK':
-        assert(aad_config.utils_lib_flask.get('id_web_location',None) is not None)
-        required_keys = ['prefix', 'sign_in', 'edit_profile', 'redirect', 'sign_out', 'post_sign_out']
-        for key in required_keys:
-            assert aad_config.auth_endpoints_flask.get(key, '').startswith('/'), (
-                f"The `{key}` value under 'auth_endpoints_flask must be string starting with / if "
-                "'framework' is FLASK")
