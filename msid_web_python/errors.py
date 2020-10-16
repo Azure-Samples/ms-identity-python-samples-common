@@ -3,13 +3,13 @@ class AuthError(Exception):
     # basic auth exception
     pass
 class AuthSecurityError(AuthError):
-    # security check failed, aborting auth attempt
+    # security check failed, abort auth attempt
     pass
 class OtherAuthError(AuthError):
-    # unknown aad error, aborting auth attempt
+    # unknown aad error, abort auth attempt
     pass
 class TokenExchangeError(AuthError):
-    # unknown aad error, aborting auth attempt
+    # unknown aad error, abort auth attempt
     pass
 class B2CPasswordError(AuthError):
     # login interrupted, must do password reset

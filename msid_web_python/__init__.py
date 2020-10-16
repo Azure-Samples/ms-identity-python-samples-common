@@ -4,7 +4,6 @@ from uuid import uuid4
 from logging import Logger
 from typing import Union, Any
 from functools import wraps
-
 from .context import IdentityContextData
 from .constants import *
 from .adapters import IdentityWebContextAdapter, FlaskContextAdapter
@@ -13,6 +12,7 @@ from .errors import *
 # TODO: 
 #  ##### IMPORTANT #####
 # features:
+# - do configurations work on multi-threaded flask environment? if not, attach them to current_app. configurations aren't stateful so this may be a moot point?
 # - edit profile interaction required error on edit profile if no token_cache or expired
 # - password reset should use login hint/no interaction?
 # - decorator for filter by security groups
@@ -256,15 +256,14 @@ class IdentityWebPython(object):
         # don't allow re-use of nonce
         self._adapter.identity_context_data.nonce = None
 
-    # this is a getter which injects IdentityWebPython instance's self into the decorator.
-    @property
-    def login_required(self):
-        def requires_login(f):
-            @wraps(f)
-            def assert_login(*args, **kwargs):
-                if not self._adapter.identity_context_data.authenticated:
-                    raise NotAuthenticatedError()
-                return f(*args, *kwargs)
-            return assert_login
-        return requires_login
+    # @decorator to ensure the user is authenticated
+    # wrap this around your route    
+    def login_required(self,f):
+        @wraps(f)
+        def assert_login(*args, **kwargs):
+            if not self._adapter.identity_context_data.authenticated:
+                raise NotAuthenticatedError
+            return f(*args, *kwargs)
+        return assert_login
+
 

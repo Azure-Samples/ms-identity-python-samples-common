@@ -12,9 +12,9 @@ from msid_web_python.adapters import FlaskContextAdapter
 from msid_web_python.errors import NotAuthenticatedError
 from msid_web_python.configuration import AADConfig
 
-
 """
-Instructions for running the app:
+Instructions for running the sample app. These are dev environment instructions ONLY.
+Do not run using this configuration in production.
 
 LINUX/OSX - in a terminal window, type the following:
 =======================================================
@@ -34,14 +34,6 @@ WINDOWS - in a command window, type the following:
 
 You can also use "python -m flask run" instead of "flask run"
 """
-def register_error_handlers(app):
-    def not_authenticated(err):
-        """log 401 and display the 401 error page"""
-        current_app.logger.info(f"{request.url}: {err}")
-        return render_template('auth/401.html')
-    # when a not authenticated error happens, invoke this method:
-    app.register_error_handler(NotAuthenticatedError, not_authenticated)
-    # NotAuthenticatedError is both flask 401 and IdWebPy based autherror
 
 def create_app(name='authenticate_users_b2c', root_path=Path(__file__).parent, config_dict=None, aad_config_dict=None):
     app = Flask(name, root_path=root_path)
@@ -58,9 +50,9 @@ def create_app(name='authenticate_users_b2c', root_path=Path(__file__).parent, c
     if config_dict is not None:
         app.config.from_mapping(config_dict)
     
-    Session(app) # init the serverside session on the app
-    register_error_handlers(app) # register error handlers
-    # TODO: more descriptive reason for why we have error handler
+    Session(app) # init the serverside session for the app
+    # when a not authenticated error happens, render this template. otherwise generic page will be displayed:
+    app.register_error_handler(NotAuthenticatedError, lambda x: (render_template('auth/401.html'), x.code))
     
     adapter = FlaskContextAdapter(app) # ms identity web for python: instantiate the flask adapter
     ms_identity_web = IdentityWebPython(AADConfig(file_path='aad.b2c.config.ini'), adapter) # then instantiate ms identity web for python:
@@ -72,9 +64,8 @@ def create_app(name='authenticate_users_b2c', root_path=Path(__file__).parent, c
         return render_template('auth/status.html')
 
     @app.route('/token_details')
-    @ms_identity_web.login_required # <-- user only needs to hook up authN-required endpoint like this
+    @ms_identity_web.login_required # <-- developer only needs to hook up login-required endpoint like this
     def token_details():
-        """show the token details, if authenticated"""
         current_app.logger.info("token_details: user is authenticated, will display token details")
         return render_template('auth/token.html')
 

@@ -111,8 +111,6 @@ class FlaskContextAdapter(IdentityWebContextAdapter):
             self.logger = app.logger
             app.before_request(self._on_request_init)
             app.after_request(self._on_request_end)
-            # app.context_processor(lambda: dict(ms_id_endpoints=aad_config.auth_endpoints_flask))
-
 
     @property
     @require_request_context
