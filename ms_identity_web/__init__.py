@@ -173,7 +173,7 @@ class IdentityWebPython(object):
                                                    self.aad_config.auth_request.get('redirect_uri', None),
                                                    id_context.nonce)
         return result
-    
+
     @require_context_adapter
     def acquire_token_silently(self, scopes=None, account=None, authority=None, token_cache=None, **kwargs):
         # the params take precedence over settings file.
@@ -182,15 +182,14 @@ class IdentityWebPython(object):
         client = self._client_factory(token_cache=token_cache)
 
         silent_opts = dict()
-        silent_opts.update(kwargs)
-        silent_opts.setdefault('scopes', self.aad_config.auth_request.get('scopes', None))
-        accounts = client.get_accounts()
-        silent_opts.setdefault('account', accounts[0])
-    
+        silent_opts.update(**kwargs)
+        silent_opts['scopes'] = scopes or self.aad_config.auth_request.get('scopes', None)
+        silent_opts['account'] = account or client.get_accounts()[0]
+
         result = client.acquire_token_silent_with_error(**silent_opts)
 
         self._process_result(result, token_cache)
-    
+
     @require_context_adapter
     def _process_result(self, result: dict, token_cache: SerializableTokenCache) -> None:
         if "error" not in result:
@@ -199,10 +198,12 @@ class IdentityWebPython(object):
             # self._logger.debug(json.dumps(result, indent=4, sort_keys=True))
             id_context = self.id_data
             id_context.authenticated = True
-            id_context._id_token_claims = result.get('id_token_claims', dict()) # TODO: if this is to stay in ctxt, use proper getter/setter
-            id_context._access_token = result.get('access_token', dict())
+            if 'id_token_claims' in result:
+                id_context._id_token_claims = result['id_token_claims'] # TODO: if this is to stay in ctxt, use proper getter/setter
+                id_context.username = id_context._id_token_claims.get('name', 'anonymous')
+            if 'access_token' in result:
+                id_context._access_token = result['access_token']
             id_context.has_changed = True                                   #TODO: update id_context to automatically do this when _id_token and accesstoken is assigned!!!!
-            id_context.username = id_context._id_token_claims.get('name', None)
             id_context.token_cache = token_cache
         else:
             raise TokenExchangeError("_process_result: auth failed: token request resulted in error\n"
