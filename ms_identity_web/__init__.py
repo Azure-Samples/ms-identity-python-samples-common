@@ -128,9 +128,10 @@ class IdentityWebPython(object):
 
             if resp_type in [str(ResponseType.CODE), None]: # code request is default for msal-python if there is no response type specified
                 # we should have a code. Now we must exchange the code for tokens.
-                self._x_change_auth_code_for_token(payload, cache, redirect_uri)
+                result = self._x_change_auth_code_for_token(payload, cache, redirect_uri)
             else:
                 raise NotImplementedError(f"response_type {resp_type} is not yet implemented by ms_identity_web_python")
+            self._process_result(result, cache)
             # self._verify_nonce() # one of the last steps TODO - is this required? msal python takes care of it?
             return next_action
         except AuthSecurityError as ase:
@@ -161,26 +162,49 @@ class IdentityWebPython(object):
     def _x_change_auth_code_for_token(self, code: str, token_cache: SerializableTokenCache = None, redirect_uri = None) -> dict:
         # use the same policy that got us here: depending on /authorize request initiation
         id_context = self._adapter.identity_context_data
-        b2c_policy = id_context.last_used_b2c_policy
+        b2c_policy = id_context.last_used_b2c_policy if self.aad_config.type.get('authority_type', None) == str(AuthorityType.B2C) else None
         client = self._client_factory(b2c_policy, token_cache)
+
         if redirect_uri:
-                self.aad_config.auth_request[str(RequestParameter.REDIRECT_URI)] = redirect_uri
+            self.aad_config.auth_request[str(RequestParameter.REDIRECT_URI)] = redirect_uri
+
         result = client.acquire_token_by_authorization_code(code, 
                                                    self.aad_config.auth_request.get('scopes', None),
                                                    self.aad_config.auth_request.get('redirect_uri', None),
                                                    id_context.nonce)
+        return result
+    
+    @require_context_adapter
+    def acquire_token_silently(self, scopes=None, account=None, authority=None, token_cache=None, **kwargs):
+        # the params take precedence over settings file.
+        id_data = self.id_data
+        token_cache = token_cache or id_data.token_cache
+        client = self._client_factory(token_cache=token_cache)
 
+        silent_opts = dict()
+        silent_opts.update(kwargs)
+        silent_opts.setdefault('scopes', self.aad_config.auth_request.get('scopes', None))
+        silent_opts.setdefault('account', client.get_accounts[0])
+    
+        result = client.acquire_token_silent_with_error(**silent_opts)
+
+        self._process_result(result, token_cache)
+    
+    @require_context_adapter
+    def _process_result(self, result: dict, token_cache: SerializableTokenCache) -> None:
         if "error" not in result:
+            self._logger.debug("process result: successful token response result!")
             # now we will place the token(s) and auth status into the context for later use:
-            self._logger.info("_x_change_auth_code_for_token: successfully x-changed code for token(s)")
             # self._logger.debug(json.dumps(result, indent=4, sort_keys=True))
+            id_context = self.id_data
             id_context.authenticated = True
             id_context._id_token_claims = result.get('id_token_claims', dict()) # TODO: if this is to stay in ctxt, use proper getter/setter
+            id_context._access_token = result.get('access_token', dict())
+            id_context.has_changed = True                                   #TODO: update id_context to automatically do this when _id_token and accesstoken is assigned!!!!
             id_context.username = id_context._id_token_claims.get('name', None)
             id_context.token_cache = token_cache
-            # self._adapter.identity_context.has_changed = True     # need to flag to save the changes.
         else:
-            raise TokenExchangeError("_x_change_auth_code_for_token: Auth failed: token request resulted in error\n"
+            raise TokenExchangeError("_process_result: auth failed: token request resulted in error\n"
                                         f"{result['error']}: {result.get('error_description', None)}")
 
     def _parse_redirect_errors(self, req_params: dict) -> None:
