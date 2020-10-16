@@ -184,7 +184,8 @@ class IdentityWebPython(object):
         silent_opts = dict()
         silent_opts.update(kwargs)
         silent_opts.setdefault('scopes', self.aad_config.auth_request.get('scopes', None))
-        silent_opts.setdefault('account', client.get_accounts[0])
+        accounts = client.get_accounts()
+        silent_opts.setdefault('account', accounts[0])
     
         result = client.acquire_token_silent_with_error(**silent_opts)
 
