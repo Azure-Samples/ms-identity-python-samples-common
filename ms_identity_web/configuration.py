@@ -86,7 +86,7 @@ class AADConfig(object): # faster access to attributes with slots.
                     f"`{key}` value under b2c must be non-empty string if "
                     "'authority_type'is AuthorityType.B2C")
         else:
-            cls.__setattr__('b2c', dict())
+            setattr(cls, 'b2c', dict())
 
         if cls.type['framework'] == 'FLASK':
             # assert(cls.utils_lib_flask.get('id_web_location',None) is not None)

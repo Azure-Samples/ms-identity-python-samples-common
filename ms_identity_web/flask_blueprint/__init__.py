@@ -1,11 +1,11 @@
 from flask import (
-    Flask, Blueprint, redirect, 
-    url_for, request, session, 
-    render_template, current_app, g)
+    Blueprint, redirect, 
+    url_for, render_template, 
+    current_app, g
+    )
 
-from msid_web_python.constants import AADErrorResponse
-from msid_web_python.errors import NotAuthenticatedError
-import msal, uuid, json
+from ms_identity_web.constants import AADErrorResponse
+from ms_identity_web.errors import NotAuthenticatedError
 
 # TODO: redirect(url_for('index')) is too opinionated. user must be able to choose
 
