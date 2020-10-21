@@ -12,6 +12,8 @@ from .errors import *
 # TODO: 
 #  ##### IMPORTANT #####
 # features:
+# - session is large due to token_cache, and therefore we use server-side session:
+#    separate out token_cache from session so that we are not opinionated about what kind of session the user is bound to?
 # - do configurations work on multi-threaded flask environment? if not, attach them to current_app. configurations aren't stateful so this may be a moot point?
 # - edit profile interaction required error on edit profile if no token_cache or expired
 # - password reset should use login hint/no interaction?
@@ -289,7 +291,7 @@ class IdentityWebPython(object):
         def assert_login(*args, **kwargs):
             if not self._adapter.identity_context_data.authenticated:
                 raise NotAuthenticatedError
-            return f(*args, *kwargs)
+            return f(*args, **kwargs)
         return assert_login
 
 
