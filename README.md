@@ -52,8 +52,8 @@ from ms_identity_web.configuration import AADConfig
 
 hook up the utils to your flask app:
 ```
-adapter = FlaskContextAdapter(app) # we are using flask, so instantiate flask adapter
-ms_identity_web = IdentityWebPython(AADConfig(file_path='aad.config.ini'), adapter) # instantiate utils by passing in config and flask adapter
+adapter = FlaskContextAdapter(app)    # we are using flask
+ms_identity_web = IdentityWebPython(AADConfig(file_path='aad.config.ini'), adapter) # instantiate utils
 ```
 
 add the @ms_identity_web.login_required decorator to protect your routes:
@@ -66,7 +66,7 @@ def my_protected_route():
 
 ## Demo
 
-see: ms-identity-b2c-python-flask-webapp-authentication @ idgsam branch for a demo
+see: https://github.com/azure-samples/ms-identity-b2c-python-flask-webapp-authentication/tree/idgsam  (@ idgsam branch) for a demo
 
 ## Resources
 
