@@ -80,9 +80,8 @@ from ms_identity_web.configuration import AADConfig
 
 hook up the utils to your flask app:
 ```
-AADConfig.parse_json('aad.config.json')
 adapter = FlaskContextAdapter(app)    # we are using flask
-ms_identity_web = IdentityWebPython(aad_config, adapter) # instantiate utils
+ms_identity_web = IdentityWebPython(AADConfig.parse_json('aad.config.json'), adapter) # instantiate utils
 ```
 
 add the @ms_identity_web.login_required decorator to protect your routes:
