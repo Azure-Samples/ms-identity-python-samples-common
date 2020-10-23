@@ -18,40 +18,45 @@ Python MSAL helper utilities, work in progress
 
 ### Installation
 
-1. Acitvate a virtual environment
-    <details> 
-      <summary>From Shell/Bash/Zsh:</summary>
-        ```Shell
-          # go to your web app directory on dev machine
-          cd your-flask-app-root-directory
-          python3 -m venv path-to-venv # only required if you don't have a venv already
-          # activate your virtual env
-          source path-to-venv/bin/activate
-        ```
-    </details>
+#### 1. Activate a virtual environment
 
-    <details> 
-      <summary>From PowerShell:</summary>
-        ```PowerShell
-          # go to your web app directory on dev machine
-          cd your-flask-app-root-directory
-          python3 -m venv path-to-venv # only required if you don't have a venv already
-          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process -Force
-          . path-to-venv\Scripts\Activate.ps1
-          pip install -r requirements.txt
-        ```
-    </details>
+<details> <summary>Linux/OSX:</summary>
+Open a terminal and type the following:
+    
+    ```Shell
+      # go to your web app directory on dev machine
+      cd your-flask-app-root-directory
+      python3 -m venv path-to-venv # only required if you don't have a venv already
+      # activate your virtual env
+      source path-to-venv/bin/activate
+    ```
+    
+</details>
 
-    Now install the utils:
-    **Use ONLY ONE** of the following two options:
-    - via https://
+<details> <summary>Windows:</summary>
+Open a terminal and type the following:
+    
+    ```PowerShell
+    # go to your web app directory on dev machine
+    cd your-flask-app-root-directory
+    python3 -m venv path-to-venv # only required if you don't have a venv already
+    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process -Force
+    . path-to-venv\Scripts\Activate.ps1
+    pip install -r requirements.txt
     ```
-    pip install git+https://git@github.com/azure-samples/ms-identity-python-utilities.git@idgsam
-    ```
-    - via ssh://
-    ```
-    pip install git+ssh://git@github.com/azure-samples/ms-identity-python-utilities.git@idgsam
-    ```
+    
+</details>
+
+#### 2. Now install the utils:
+**Use ONLY ONE** of the following two options:
+- via https://
+```
+pip install git+https://git@github.com/azure-samples/ms-identity-python-utilities.git@idgsam
+```
+- via ssh://
+```
+pip install git+ssh://git@github.com/azure-samples/ms-identity-python-utilities.git@idgsam
+```
 
 1. copy a config template (e.g. `aad.config.ini`) from the repo and in to your project root dir, and fill in the details
 
