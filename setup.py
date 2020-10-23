@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='ms_identity_web',
-      version='0.13.1',
+      version='0.13.2',
       description='MSAL Identity Utilties',
       author='Azure Samples',
       url='https://github.com/azure-samples/ms-identity-python-utilities',

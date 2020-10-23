@@ -98,10 +98,9 @@ class IdentityWebPython(object):
 
         if self.aad_config.type.authority_type == str(AuthorityType.B2C):
             auth_req_config, b2c_policy = self.prepare_b2c_auth(auth_req_config, b2c_policy)
-        else:
-            b2c_policy = None
-        self._generate_and_append_state_to_context_and_request(auth_req_config)
-        return self._client_factory(b2c_policy).get_authorization_request_url(**auth_req_config)
+            return self._client_factory(b2c_policy=b2c_policy).get_authorization_request_url(**auth_req_config)
+
+        return self._client_factory().get_authorization_request_url(**auth_req_config)
     
     # TODO: should require authenticated for edit profile:
     def prepare_b2c_auth(self, auth_req_config_dict, b2c_policy):
