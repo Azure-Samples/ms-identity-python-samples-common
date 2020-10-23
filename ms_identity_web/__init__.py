@@ -94,14 +94,14 @@ class IdentityWebPython(object):
         self._generate_and_append_state_to_context_and_request(auth_req_options)
 
         if self.id_data.authenticated:
-            auth_req_options[Prompt.PARAM_KEY] = str(Prompt.NONE)
+            auth_req_options['prompt'] = None
             auth_req_options['login_hint'] = self.id_data._id_token_claims.get('preferred_username', None)
 
         if self.aad_config.type.authority_type == str(AuthorityType.B2C):
             # auth_req_options, b2c_policy = self.prepare_b2c_auth(auth_req_options, b2c_policy)
             if not b2c_policy:
                 b2c_policy = self.aad_config.b2c.susi
-                self.id_data.last_used_b2c_policy = b2c_policy
+            self._adapter.identity_context_data.last_used_b2c_policy = b2c_policy
             return self._client_factory(b2c_policy=b2c_policy).get_authorization_request_url(**auth_req_options)
 
         return self._client_factory().get_authorization_request_url(**auth_req_options)
@@ -203,7 +203,7 @@ class IdentityWebPython(object):
             self._logger.debug("process result: successful token response result!")
             # now we will place the token(s) and auth status into the context for later use:
             # self._logger.debug(json.dumps(result, indent=4, sort_keys=True))
-            id_context = self.id_data
+            id_context = self._adapter.identity_context_data
             id_context.authenticated = True
             if 'id_token_claims' in result:
                 id_context._id_token_claims = result['id_token_claims'] # TODO: if this is to stay in ctxt, use proper getter/setter

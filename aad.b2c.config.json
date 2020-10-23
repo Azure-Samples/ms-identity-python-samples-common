@@ -11,8 +11,8 @@
     },
 "b2c": {
     "susi": "/b2c_1_susi",
-    "password": "/b2c_1_edit_profile",
-    "profile": "/b2c_1_reset"
+    "profile": "/b2c_1_edit_profile",
+    "password": "/b2c_1_reset"
     },
 "auth_request": {
     "redirect_uri": null,
