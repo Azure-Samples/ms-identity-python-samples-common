@@ -72,47 +72,54 @@ class IdentityWebPython(object):
     def set_logger(self, logger: Logger) -> None:
         self._logger = logger
 
-    def _client_factory(self, policy: str = None, token_cache: SerializableTokenCache = None, **kwargs) -> ConfidentialClientApplication:
-        client_config = self.aad_config.client.copy() # need to make a copy since contents must be mutated
-        client_config['authority'] = f'{self.aad_config.client["authority"]}{policy if policy else ""}'
+    def _client_factory(self, token_cache: SerializableTokenCache = None, b2c_policy: str = None, **msal_client_kwargs) -> ConfidentialClientApplication:
+        client_config = self.aad_config.client.__dict__.copy() # need to make a copy since contents must be mutated
+        client_config['authority'] = f'{self.aad_config.client.authority}{b2c_policy or ""}'
         if token_cache:
             client_config['token_cache'] = token_cache
+        client_config.update(**msal_client_kwargs)
 
         return ConfidentialClientApplication(**client_config)        
 
+    # TODO: by default, remove select_account if user is already logged in! prompt=none, login_hint=username
     @require_context_adapter
-    def get_auth_url(self, redirect_uri:str = None, policy: str = None, 
-                    token_cache: SerializableTokenCache = None, **kwargs):
+    def get_auth_url(self, redirect_uri:str = None, b2c_policy: str = None, 
+                    token_cache: SerializableTokenCache = None, **msal_auth_url_kwargs):
         """ Gets the auth URL that the user must be redirected to. Automatically
             configures B2C if app type is set to B2C."""
-        auth_req_config = self.aad_config.auth_request.copy()
-        auth_req_config.update(**kwargs)
-        if redirect_uri:
-            auth_req_config[str(RequestParameter.REDIRECT_URI)] = redirect_uri
-        elif 'redirect_uri' not in auth_req_config:
-            auth_req_config[str(RequestParameter.REDIRECT_URI)] = self.aad_config.auth_request.get('redirect_uri')
+        auth_req_config = self.aad_config.auth_request.__dict__.copy()
+        auth_req_config.update(**msal_auth_url_kwargs)
 
-        if self.aad_config.type['authority_type'] == str(AuthorityType.B2C):
-            auth_req_config, policy = self.prepare_b2c_auth(auth_req_config, policy)
+        if redirect_uri:
+            auth_req_config['redirect_uri'] = redirect_uri
+        elif 'redirect_uri' not in auth_req_config: # if no explicit redirect?
+            pass
+            # auth_req_config[str(RequestParameter.REDIRECT_URI)] = self.aad_config.auth_request.get('redirect_uri')
+
+        if self.aad_config.type.authority_type == str(AuthorityType.B2C):
+            auth_req_config, b2c_policy = self.prepare_b2c_auth(auth_req_config, b2c_policy)
+        else:
+            b2c_policy = None
         self._generate_and_append_state_to_context_and_request(auth_req_config)
-        return self._client_factory(policy).get_authorization_request_url(**auth_req_config)
+        return self._client_factory(b2c_policy).get_authorization_request_url(**auth_req_config)
     
     # TODO: should require authenticated for edit profile:
-    def prepare_b2c_auth(self, auth_req_config, policy):
-        if policy is None:
-            policy = self.aad_config.b2c.get('susi')
-        elif (policy != self.aad_config.b2c.get('susi') and
-                auth_req_config.get(Prompt.PARAM_KEY, None) == Prompt.SELECT_ACCOUNT):
+    def prepare_b2c_auth(self, auth_req_config_dict, b2c_policy):
+        if not b2c_policy:
+            b2c_policy = self.aad_config.b2c.susi
+        elif (b2c_policy != self.aad_config.b2c.susi and
+                auth_req_config_dict.get(Prompt.PARAM_KEY, None) == Prompt.SELECT_ACCOUNT):
+                # TODO: by default, remove select_account if user is already logged in! prompt=none, login_hint=username
                 # remove prompt = select_account if edit profile policy 
                 # or pw reset is selected. do not make user pick idp again:
-                auth_req_config.pop(Prompt.PARAM_KEY, None)
-        self._adapter.identity_context_data.last_used_b2c_policy = policy
-        return auth_req_config, policy
+                auth_req_config_dict.pop(Prompt.PARAM_KEY, None)
+        self._adapter.identity_context_data.last_used_b2c_policy = b2c_policy
+        return auth_req_config_dict, b2c_policy
 
 
     @require_context_adapter
-    def process_auth_redirect(self, next_action, redirect_uri: str = None) -> None:
-        req_params = self._adapter.get_request_params_as_dict()
+    def process_auth_redirect(self, next_action, redirect_uri: str = None, response_type: str = None) -> None:
+        req_params = self._adapter.get_request_params_as_dict() # grab the incoming request params
         try:
             # CSRF protection: make sure to check that state matches the one placed in the session in the previous step.
             # This check ensures this app + this same user session made the /authorize request that resulted in this redirect
@@ -124,11 +131,11 @@ class IdentityWebPython(object):
             self._logger.info("process_auth_redirect: no errors found in request params. continuing.")
             
             # get the response_type that was requested, and extract the payload:
-            resp_type = self.aad_config.auth_request.get(str(ResponseType.PARAM_KEY), None)
+            resp_type = response_type or self.aad_config.auth_request.response_type or str(ResponseType.CODE)
             payload = self._extract_auth_response_payload(req_params, resp_type)
             cache = self._adapter.identity_context_data.token_cache
 
-            if resp_type in [str(ResponseType.CODE), None]: # code request is default for msal-python if there is no response type specified
+            if resp_type == str(ResponseType.CODE): # code request is default for msal-python if there is no response type specified
                 # we should have a code. Now we must exchange the code for tokens.
                 result = self._x_change_auth_code_for_token(payload, cache, redirect_uri)
             else:
@@ -145,7 +152,7 @@ class IdentityWebPython(object):
         except B2CPasswordError as b2cpwe:
             self.remove_user()
             self._logger.error(f"process_auth_redirect: b2c pwd {b2cpwe.args}")
-            pw_reset_url = self.get_auth_url(self.aad_config.b2c.get('password'))
+            pw_reset_url = self.get_auth_url(policy = self.aad_config.b2c.password)
             return self._adapter.redirect_to_absolute_url(pw_reset_url)
         except TokenExchangeError as ter:
             self.remove_user()
@@ -164,15 +171,14 @@ class IdentityWebPython(object):
     def _x_change_auth_code_for_token(self, code: str, token_cache: SerializableTokenCache = None, redirect_uri = None) -> dict:
         # use the same policy that got us here: depending on /authorize request initiation
         id_context = self._adapter.identity_context_data
-        b2c_policy = id_context.last_used_b2c_policy if self.aad_config.type.get('authority_type', None) == str(AuthorityType.B2C) else None
+        b2c_policy = id_context.last_used_b2c_policy if self.aad_config.type.authority_type == str(AuthorityType.B2C) else None
         client = self._client_factory(b2c_policy, token_cache)
 
-        if redirect_uri:
-            self.aad_config.auth_request[str(RequestParameter.REDIRECT_URI)] = redirect_uri
+        redirect_uri = redirect_uri or self.aad_config.auth_request.redirect_uri or None
 
         result = client.acquire_token_by_authorization_code(code, 
-                                                   self.aad_config.auth_request.get('scopes', None),
-                                                   self.aad_config.auth_request.get('redirect_uri', None),
+                                                   self.aad_config.auth_request.scopes,
+                                                   redirect_uri,
                                                    id_context.nonce)
         return result
 
@@ -185,7 +191,7 @@ class IdentityWebPython(object):
 
         silent_opts = dict()
         silent_opts.update(**kwargs)
-        silent_opts['scopes'] = scopes or self.aad_config.auth_request.get('scopes', None)
+        silent_opts['scopes'] = scopes or self.aad_config.auth_request.scopes
         silent_opts['account'] = account or client.get_accounts()[0]
 
         result = client.acquire_token_silent_with_error(**silent_opts)
@@ -225,7 +231,7 @@ class IdentityWebPython(object):
                 raise OtherAuthError("Unknown error while parsing redirect")
 
     def _extract_auth_response_payload(self, req_params: dict, expected_response_type: str) -> str:
-        if expected_response_type in [str(ResponseType.CODE), None]:
+        if expected_response_type == str(ResponseType.CODE):
             # if no response type in config, default response type of 'code' will have been assumed.
             return req_params.get(str(ResponseType.CODE), None)
         else:
@@ -233,10 +239,10 @@ class IdentityWebPython(object):
 
     @require_context_adapter
     def sign_out(self, post_sign_out_url:str = None, username: str = None) -> Any:
-        authority = self.aad_config.type.get('authority_type', str(AuthorityType.SINGLE_TENANT))
-        sign_out_url = f'{self.aad_config.client["authority"]}'
-        if authority == str(AuthorityType.B2C):
-            sign_out_url = f'{sign_out_url}{self.aad_config.b2c.get("susi")}{SignOut.ENDPOINT.value}'
+        authority_type = self.aad_config.type.authority_type
+        sign_out_url = self.aad_config.client.authority
+        if authority_type == str(AuthorityType.B2C):
+            sign_out_url = f'{sign_out_url}{self.aad_config.b2c.susi}{SignOut.ENDPOINT.value}'
         else:
             sign_out_url = f'{sign_out_url}{SignOut.ENDPOINT.value}'
 
@@ -248,6 +254,9 @@ class IdentityWebPython(object):
     def remove_user(self, username: str = None) -> None: #TODO: complete this so it doesn't just clear the session but removes user
         self._adapter.clear_session()
         # TODO e.g. if active username in id_context_'s username is not anonymous, remove it
+        # remove id token
+        # remote AT
+        # remove token_cache
         # TODO: set auth_state_changed flag here
     
     @require_context_adapter
@@ -284,6 +293,7 @@ class IdentityWebPython(object):
         # don't allow re-use of nonce
         self._adapter.identity_context_data.nonce = None
 
+    # TODO: enforce ID token expiry.
     # @decorator to ensure the user is authenticated
     # wrap this around your route    
     def login_required(self,f):
