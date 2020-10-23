@@ -1,23 +1,20 @@
-# Ms Identity Python Utils
+# MS Identity Python Common
 
-Python MSAL helper utilities. Work in progress.
+This repository contains a set of code that is shared amongst the various Python samples for the Microsoft Identity Platform. This is a work in progress and we'd love to hear your feedback, comments and contributions.
 
-## Goals
+## Features
 
-- Reduce code duplication and increase maintainability across samples
-- Increase sample lesson uptake by reducing exposure to implementation details
-- Reduce time to get developer onboarded to Microsoft Identity Platform basics
+The code present makes available the following features to the developers: 
 - Allow for (but not require) automatic Flask/Django/other framework integration
 - Allow for (but not require) automatic endpoint protection
 - Catch AAD errors and handle them properly, e.g.:
     - password reset flow and edit profile flow
     - insufficient / incremental consent
-- token cache handling
-- allow multiple identity sessions per user agent session
-- Handling the above on a per-sample basis would require duplicating hundreds of lines of code in each of a dozen or more samples
+- Token cache handling
+- Allow multiple identity sessions per user agent session [might need more clarity??]
 
 ## Features
-
+[merge with above]
 - Abstract authN and authZ implementation details away from developer
 - authN enforcement by decorator
 - authZ enforcement by decorator (not yet implented)
@@ -102,6 +99,7 @@ def my_protected_route():
 
 see: https://github.com/azure-samples/ms-identity-b2c-python-flask-webapp-authentication/tree/idgsam  (@ idgsam branch) for a demo
 
+## [add classes and their descriptions (You would reply mostly on code comments, but you should at least list the files here.)]
 ## Resources
 
 
