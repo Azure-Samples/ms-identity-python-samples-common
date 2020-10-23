@@ -94,7 +94,7 @@ class IdentityWebPython(object):
         self._generate_and_append_state_to_context_and_request(auth_req_options)
 
         if self.id_data.authenticated:
-            auth_req_options[Prompt.PARAM_KEY] = Prompt.NONE
+            auth_req_options[Prompt.PARAM_KEY] = str(Prompt.NONE)
             auth_req_options['login_hint'] = self.id_data._id_token_claims.get('preferred_username', None)
 
         if self.aad_config.type.authority_type == str(AuthorityType.B2C):
