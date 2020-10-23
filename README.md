@@ -98,25 +98,25 @@ see: https://github.com/azure-samples/ms-identity-b2c-python-flask-webapp-authen
 
 ## Project Structure
 #### __init__.py
-    - main common code API is here.
+- main common code API is here.
 #### adapters.py
-    - FlaskContextAdapter for handling interaction between the API and flask context (e.g. session, request)
-    - An ABC defining the interface for writing more adapters
-    - Django adapter will go here.
-    - Should be re-organised into folders on a per-framework basis?
+- FlaskContextAdapter for handling interaction between the API and flask context (e.g. session, request)
+- An ABC defining the interface for writing more adapters
+- Django adapter will go here.
+- Should be re-organised into folders on a per-framework basis?
 #### flask_blueprint
-    - a class that implemets all aad-specific endpoints. support for multiple instances with different prefixes if necessary
-    - all bindings are automatic with flaskcontextadapter
+- a class that implemets all aad-specific endpoints. support for multiple instances with different prefixes if necessary
+- all bindings are automatic with flaskcontextadapter
 #### blueprint-like functionality for django (`reusable django app`)
-    - not yet implemented
+- not yet implemented
 #### context.py
-    - IdentityContext class that holds ID-specific info (simple class with attributes and has_changed function for write-to-session decision)
+- IdentityContext class that holds ID-specific info (simple class with attributes and has_changed function for write-to-session decision)
 #### configuration.py
-    - simple configuration parser and sanity checker
+- simple configuration parser and sanity checker
 #### constants.py
-    - AAD constants
+- AAD constants
 #### errors.py
-    - AAd error classes
+- AAd error classes
     
 ## Resources
 
