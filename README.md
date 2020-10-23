@@ -51,7 +51,7 @@ pip install -r requirements.txt
 Use **only one** of the following two options:
 - via https://
 ```
-pip install git+https://git@github.com/azure-samples/ms-identity-python-utilities.git@idgsam
+pip install git+https://github.com/azure-samples/ms-identity-python-utilities.git@idgsam
 ```
 - via ssh://
 ```
