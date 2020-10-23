@@ -4,36 +4,16 @@ from .constants import AuthorityType, ClientType
 from types import SimpleNamespace
 
 class AADConfig(SimpleNamespace): # faster access to attributes with slots.
-    __slots__=(
-        'type', 
-        'client', 
-        'b2c', 
-        'auth_request', 
-        'flask', 
-        'django'
-    )
-
-    @classmethod
-    def __init__(cls, file_path=None, environ_path_key=None) -> None:
-        if file_path is None:
-            file_path = os.environ.get(environ_path_key, 'aad.config.ini')
-        if file_path.endswith('.ini'):
-            cls.parse_ini(file_path)
-        elif file_path.endswith('.json'):
-            cls.parse_json(file_path)
-        else:
-            raise NotImplementedError
-        cls.sanity_check_configs()
-
-    @classmethod
+    @staticmethod
     def parse_ini(cls, file_path: str):
+        raise NotImplementedError
         parser = ConfigParser(inline_comment_prefixes="#")
         parser.read(file_path)
         for section in parser.sections():
             section_dict = dict(parser.items(section))
             setattr(cls, section, section_dict)
 
-    @classmethod
+    @staticmethod
     def parse_json(cls, file_path: str):
         import json
         from types import SimpleNamespace
@@ -42,7 +22,7 @@ class AADConfig(SimpleNamespace): # faster access to attributes with slots.
         cls.sanity_check_configs(parsed_config)
         return parsed_config
 
-    @classmethod
+    @staticmethod
     def parse_yml(cls, file_path: str):
         raise NotImplementedError
         try:

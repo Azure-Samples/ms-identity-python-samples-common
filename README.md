@@ -4,19 +4,16 @@ This repository contains a set of code that is shared amongst the various Python
 
 ## Features
 
-The code present makes available the following features to the developers: 
-- Allow for (but not require) automatic Flask/Django/other framework integration
-- Allow for (but not require) automatic endpoint protection
+The code present makes available or aims to make available the following features to the developers: 
+- Allow for (but not require) automatic Flask/Django/other framework integration (implemented for flask)
+- Allow for (but not require) automatic endpoint protection (implemented for flask)
 - Catch AAD errors and handle them properly, e.g.:
-    - password reset flow and edit profile flow
-    - insufficient / incremental consent
-- Token cache handling
-- Allow multiple identity sessions per user agent session [might need more clarity??]
-
-## Features
-[merge with above]
+    - password reset flow and edit profile flow (implemented)
+    - insufficient / incremental consent (needs implementation)
+- Token cache handling (implemeted)
+- authN enforcement by decorator (implemented)
+- Allow multiple identity sessions per user browser session (i.e., multiple logged in users in one browser session) (not yet implemented)
 - Abstract authN and authZ implementation details away from developer
-- authN enforcement by decorator
 - authZ enforcement by decorator (not yet implented)
 
 ## Getting Started
@@ -69,7 +66,7 @@ pip install git+https://github.com/azure-samples/ms-identity-python-utilities.gi
 pip install git+ssh://git@github.com/azure-samples/ms-identity-python-utilities.git@idgsam
 ```
 
-##### 3. copy a config template (e.g. `aad.config.ini`) from the repo and in to your project root dir, and fill in the details
+##### 3. copy a config template (e.g. `aad.config.json`) from the repo and in to your project root dir, and fill in the details
 
 ### Quickstart
 
@@ -83,8 +80,9 @@ from ms_identity_web.configuration import AADConfig
 
 hook up the utils to your flask app:
 ```
+AADConfig.parse_json('aad.config.json')
 adapter = FlaskContextAdapter(app)    # we are using flask
-ms_identity_web = IdentityWebPython(AADConfig(file_path='aad.config.ini'), adapter) # instantiate utils
+ms_identity_web = IdentityWebPython(aad_config, adapter) # instantiate utils
 ```
 
 add the @ms_identity_web.login_required decorator to protect your routes:

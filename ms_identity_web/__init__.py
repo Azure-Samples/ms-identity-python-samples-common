@@ -12,29 +12,22 @@ from .errors import *
 # TODO: 
 #  ##### IMPORTANT #####
 # features:
-# - session is large due to token_cache, and therefore we use server-side session:
-#    separate out token_cache from session so that we are not opinionated about what kind of session the user is bound to?
 # - do configurations work on multi-threaded flask environment? if not, attach them to current_app. configurations aren't stateful so this may be a moot point?
-# - edit profile interaction required error on edit profile if no token_cache or expired
+# - edit profile interaction required error on edit profile if no token_cache or expired?
 # - password reset should use login hint/no interaction?
 # - decorator for filter by security groups
 # - decorator for app roles RBAC
 # - auth failure handler to handle un-auth access?
-# - implement more client_creation options
+# - implement more client_type options (single and multi tenant)
 # - define django adapter: factor common adapter methods to a parent class that flask and django adapters inherit
 #
 # code quality:
 # - more try catch blocks around sensitive failure-prone methods for gracefule error-handling
-# - check for session explicitly in adapter
-# - save/load context only if session has changed (?)
-# - rename adapters to context_adapters - or a better, more descriptive name?
-# - a reference to the id_context right here in the IdWebPython util rather than having to access thru adapter each time?
 # 
 # ###### LOWER PRIORITY ##########
 # - remove any print statements
-# - replace some is with ==
+# - replace is comparators with == ?
 # - cleanup / refactor constants file
-# - cleanup / refactor the configs (maybe use a configs parser + config file to hydrate a config object?)
 
 def require_context_adapter(f):
     @wraps(f)
