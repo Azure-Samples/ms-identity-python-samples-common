@@ -87,20 +87,17 @@ class IdentityWebPython(object):
                     token_cache: SerializableTokenCache = None, **msal_auth_url_kwargs):
         """ Gets the auth URL that the user must be redirected to. Automatically
             configures B2C if app type is set to B2C."""
-        auth_req_config = self.aad_config.auth_request.__dict__.copy()
-        auth_req_config.update(**msal_auth_url_kwargs)
+        auth_req_options = self.aad_config.auth_request.__dict__.copy()
+        auth_req_options.update(**msal_auth_url_kwargs)
 
-        if redirect_uri:
-            auth_req_config['redirect_uri'] = redirect_uri
-        elif 'redirect_uri' not in auth_req_config: # if no explicit redirect?
-            pass
-            # auth_req_config[str(RequestParameter.REDIRECT_URI)] = self.aad_config.auth_request.get('redirect_uri')
+        auth_req_options['redirect_uri'] = redirect_uri or auth_req_options.redirect_uri or None
+        self._generate_and_append_state_to_context_and_request(auth_req_options)
 
         if self.aad_config.type.authority_type == str(AuthorityType.B2C):
-            auth_req_config, b2c_policy = self.prepare_b2c_auth(auth_req_config, b2c_policy)
-            return self._client_factory(b2c_policy=b2c_policy).get_authorization_request_url(**auth_req_config)
+            auth_req_options, b2c_policy = self.prepare_b2c_auth(auth_req_options, b2c_policy)
+            return self._client_factory(b2c_policy=b2c_policy).get_authorization_request_url(**auth_req_options)
 
-        return self._client_factory().get_authorization_request_url(**auth_req_config)
+        return self._client_factory().get_authorization_request_url(**auth_req_options)
     
     # TODO: should require authenticated for edit profile:
     def prepare_b2c_auth(self, auth_req_config_dict, b2c_policy):
