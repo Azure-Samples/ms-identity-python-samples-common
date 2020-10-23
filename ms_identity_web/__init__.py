@@ -93,24 +93,25 @@ class IdentityWebPython(object):
         auth_req_options['redirect_uri'] = redirect_uri or auth_req_options.redirect_uri or None
         self._generate_and_append_state_to_context_and_request(auth_req_options)
 
+        if self.id_data.authenticated:
+            auth_req_options[Prompt.PARAM_KEY] = Prompt.NONE
+            auth_req_options['login_hint'] = self.id_data._id_token_claims.preferred_username
+
         if self.aad_config.type.authority_type == str(AuthorityType.B2C):
-            auth_req_options, b2c_policy = self.prepare_b2c_auth(auth_req_options, b2c_policy)
+            # auth_req_options, b2c_policy = self.prepare_b2c_auth(auth_req_options, b2c_policy)
+            if not b2c_policy:
+                b2c_policy = self.aad_config.b2c.susi
+                self.id_data.last_used_b2c_policy = b2c_policy
             return self._client_factory(b2c_policy=b2c_policy).get_authorization_request_url(**auth_req_options)
 
         return self._client_factory().get_authorization_request_url(**auth_req_options)
     
     # TODO: should require authenticated for edit profile:
-    def prepare_b2c_auth(self, auth_req_config_dict, b2c_policy):
-        if not b2c_policy:
-            b2c_policy = self.aad_config.b2c.susi
-        elif (b2c_policy != self.aad_config.b2c.susi and
-                auth_req_config_dict.get(Prompt.PARAM_KEY, None) == Prompt.SELECT_ACCOUNT):
-                # TODO: by default, remove select_account if user is already logged in! prompt=none, login_hint=username
-                # remove prompt = select_account if edit profile policy 
-                # or pw reset is selected. do not make user pick idp again:
-                auth_req_config_dict.pop(Prompt.PARAM_KEY, None)
-        self._adapter.identity_context_data.last_used_b2c_policy = b2c_policy
-        return auth_req_config_dict, b2c_policy
+    # def prepare_b2c_auth(self, auth_req_config_dict, b2c_policy):
+    #     if not b2c_policy:
+    #         b2c_policy = self.aad_config.b2c.susi
+    #     self._adapter.identity_context_data.last_used_b2c_policy = b2c_policy
+    #     return auth_req_config_dict, b2c_policy
 
 
     @require_context_adapter
