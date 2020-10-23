@@ -1,6 +1,20 @@
 # Ms Identity Python Utils
 
-Python MSAL helper utilities, work in progress
+Python MSAL helper utilities. Work in progress.
+
+## Goals
+
+- Reduce code duplication and increase maintainability across samples
+- Increase sample lesson uptake by reducing exposure to implementation details
+- Reduce time to get developer onboarded to Microsoft Identity Platform basics
+- Allow for (but not require) automatic Flask/Django/other framework integration
+- Allow for (but not require) automatic endpoint protection
+- Catch AAD errors and handle them properly, e.g.:
+    - password reset flow and edit profile flow
+    - insufficient / incremental consent
+- token cache handling
+- allow multiple identity sessions per user agent session
+- Handling the above on a per-sample basis would require duplicating hundreds of lines of code in each of a dozen or more samples
 
 ## Features
 
@@ -14,7 +28,7 @@ Python MSAL helper utilities, work in progress
 
 - Python 3.8
 - A virtual env for your own webapp project
-- A flask project (currently implemented) or a Django project (not yet implemented)
+- A flask project (currently implemented) or other web framework (not yet implemented) or desktop app (not yet implemented)
 
 ### Installation
 

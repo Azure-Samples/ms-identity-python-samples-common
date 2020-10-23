@@ -66,13 +66,15 @@ class IdentityContextData(object):
         self._nonce = value
         self.has_changed = True
 
+    # TODO: talk to MSIDWEB team
+    # or browse the code about how to implement the following:
     @property
     def last_used_b2c_policy(self) -> str:
         if len(self._last_used_b2c_policy):
             return self._last_used_b2c_policy.pop()
-        return ''
+        return None
 
     @last_used_b2c_policy.setter
     def last_used_b2c_policy(self, value: str) -> None:
-        self._last_used_b2c_policy.append(value)
+        self._last_used_b2c_policy = [value]
         self.has_changed = True
