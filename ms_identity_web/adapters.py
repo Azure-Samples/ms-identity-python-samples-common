@@ -146,14 +146,16 @@ class FlaskContextAdapter(IdentityWebContextAdapter):
         """attach the identity web instance to session so it is accessible everywhere.
         e.g., ms_id_web = current_app.config.get("ms_identity_web")\n
         Also attaches the application logger."""
-        # config_key = identity_web.aad_config.utils_lib_flask.get('id_web_location', 'ms_identity_web')
-        # with self.app.app_context():
-        #     self.app.config[config_key] = identity_web
+        aad_config = identity_web.aad_config
+        config_key = aad_config.flask.id_web_configs
+
+        with self.app.app_context():
+            self.app.config[config_key] = aad_config
+
         identity_web.set_logger(self.logger)
         auth_endpoints = FlaskAADEndpoints(identity_web)
         self.app.context_processor(lambda: dict(ms_id_url_for=auth_endpoints.url_for))
-        self.app.register_blueprint(auth_endpoints)
-        
+        self.app.register_blueprint(auth_endpoints)        
         
         
 
