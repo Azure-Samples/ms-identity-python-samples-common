@@ -130,6 +130,7 @@ class IdentityWebPython(object):
             resp_type = response_type or self.aad_config.auth_request.response_type or str(ResponseType.CODE)
             payload = self._extract_auth_response_payload(req_params, resp_type)
             cache = self._adapter.identity_context_data.token_cache
+            redirect_uri = redirect_uri or self.aad_config.auth_request.redirect_uri or None
 
             if resp_type == str(ResponseType.CODE): # code request is default for msal-python if there is no response type specified
                 # we should have a code. Now we must exchange the code for tokens.
@@ -167,10 +168,11 @@ class IdentityWebPython(object):
     def _x_change_auth_code_for_token(self, code: str, token_cache: SerializableTokenCache = None, redirect_uri = None) -> dict:
         # use the same policy that got us here: depending on /authorize request initiation
         id_context = self._adapter.identity_context_data
-        b2c_policy = id_context.last_used_b2c_policy if self.aad_config.type.authority_type == str(AuthorityType.B2C) else None
-        client = self._client_factory(b2c_policy, token_cache)
-
-        redirect_uri = redirect_uri or self.aad_config.auth_request.redirect_uri or None
+        if self.aad_config.type.authority_type == str(AuthorityType.B2C):
+            b2c_policy = id_context.last_used_b2c_policy or self.aad_config.b2c.susi
+            client = self._client_factory(token_cache=token_cache, b2c_policy=b2c_policy)
+        else:
+            client = self._client_factory(token_cache=token_cache)
 
         result = client.acquire_token_by_authorization_code(code, 
                                                    self.aad_config.auth_request.scopes,
