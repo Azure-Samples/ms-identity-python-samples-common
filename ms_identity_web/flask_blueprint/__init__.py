@@ -28,7 +28,7 @@ class FlaskAADEndpoints(Blueprint):
             current_app.logger.debug(f"{name}.{edit_profile}: request received. will redirect browser to edit profile")
             auth_url = id_web.get_auth_url(
                     redirect_uri=url_for('.aad_redirect', _external=True),
-                    policy=config.b2c.get('profile'))
+                    policy=config.b2c.profile)
             return redirect(auth_url)
 
         @self.route(endpoints.redirect)
