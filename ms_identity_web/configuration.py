@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 class AADConfig(SimpleNamespace): # faster access to attributes with slots.
     @staticmethod
-    def parse_ini(cls, file_path: str):
+    def parse_ini(file_path: str):
         raise NotImplementedError
         parser = ConfigParser(inline_comment_prefixes="#")
         parser.read(file_path)
@@ -14,7 +14,7 @@ class AADConfig(SimpleNamespace): # faster access to attributes with slots.
             setattr(cls, section, section_dict)
 
     @staticmethod
-    def parse_json(cls, file_path: str):
+    def parse_json(file_path: str):
         import json
         from types import SimpleNamespace
         with open(file_path, 'r') as cfg:
@@ -23,7 +23,7 @@ class AADConfig(SimpleNamespace): # faster access to attributes with slots.
         return parsed_config
 
     @staticmethod
-    def parse_yml(cls, file_path: str):
+    def parse_yml(file_path: str):
         raise NotImplementedError
         try:
             import yaml
