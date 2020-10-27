@@ -19,7 +19,7 @@ class AADConfig(SimpleNamespace): # faster access to attributes with slots.
         from types import SimpleNamespace
         with open(file_path, 'r') as cfg:
             parsed_config = json.load(cfg, object_hook=lambda d: SimpleNamespace(**d))
-        cls.sanity_check_configs(parsed_config)
+        AADConfig.sanity_check_configs(parsed_config)
         return parsed_config
 
     @staticmethod
