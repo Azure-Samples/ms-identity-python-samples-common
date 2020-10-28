@@ -5,15 +5,6 @@ from types import SimpleNamespace
 
 class AADConfig(SimpleNamespace): # faster access to attributes with slots.
     @staticmethod
-    def parse_ini(file_path: str):
-        raise NotImplementedError
-        parser = ConfigParser(inline_comment_prefixes="#")
-        parser.read(file_path)
-        for section in parser.sections():
-            section_dict = dict(parser.items(section))
-            setattr(cls, section, section_dict)
-
-    @staticmethod
     def parse_json(file_path: str):
         import json
         from types import SimpleNamespace
@@ -55,7 +46,7 @@ class AADConfig(SimpleNamespace): # faster access to attributes with slots.
             # assert b2c has required keys:            
             required_keys = ['susi','password', 'profile']
             for key in required_keys:
-                assert getattr(parsed_config.b2c, key).startswith('/b2c_1'), (
+                assert getattr(parsed_config.b2c, key).lower().startswith('/b2c_1'), (
                     f"`{key}` value under b2c must be non-empty string if "
                     "'authority_type'is AuthorityType.B2C")
         else:
