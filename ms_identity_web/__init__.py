@@ -76,8 +76,7 @@ class IdentityWebPython(object):
 
     # TODO: by default, remove select_account if user is already logged in! prompt=none, login_hint=username
     @require_context_adapter
-    def get_auth_url(self, redirect_uri:str = None, b2c_policy: str = None, 
-                    token_cache: SerializableTokenCache = None, **msal_auth_url_kwargs):
+    def get_auth_url(self, redirect_uri:str = None, b2c_policy: str = None, **msal_auth_url_kwargs):
         """ Gets the auth URL that the user must be redirected to. Automatically
             configures B2C if app type is set to B2C."""
         auth_req_options = self.aad_config.auth_request.__dict__.copy()
@@ -87,25 +86,15 @@ class IdentityWebPython(object):
         self._generate_and_append_state_to_context_and_request(auth_req_options)
 
         if self.id_data.authenticated:
-            auth_req_options['prompt'] = None
             auth_req_options['login_hint'] = self.id_data._id_token_claims.get('preferred_username', None)
 
         if self.aad_config.type.authority_type == str(AuthorityType.B2C):
-            # auth_req_options, b2c_policy = self.prepare_b2c_auth(auth_req_options, b2c_policy)
             if not b2c_policy:
                 b2c_policy = self.aad_config.b2c.susi
             self._adapter.identity_context_data.last_used_b2c_policy = b2c_policy
             return self._client_factory(b2c_policy=b2c_policy).get_authorization_request_url(**auth_req_options)
 
         return self._client_factory().get_authorization_request_url(**auth_req_options)
-    
-    # TODO: should require authenticated for edit profile:
-    # def prepare_b2c_auth(self, auth_req_config_dict, b2c_policy):
-    #     if not b2c_policy:
-    #         b2c_policy = self.aad_config.b2c.susi
-    #     self._adapter.identity_context_data.last_used_b2c_policy = b2c_policy
-    #     return auth_req_config_dict, b2c_policy
-
 
     @require_context_adapter
     def process_auth_redirect(self, next_action, redirect_uri: str = None, response_type: str = None) -> None:
