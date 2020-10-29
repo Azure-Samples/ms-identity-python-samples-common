@@ -74,7 +74,6 @@ class IdentityWebPython(object):
 
         return ConfidentialClientApplication(**client_config)        
 
-    # TODO: by default, remove select_account if user is already logged in! prompt=none, login_hint=username
     @require_context_adapter
     def get_auth_url(self, redirect_uri:str = None, b2c_policy: str = None, **msal_auth_url_kwargs):
         """ Gets the auth URL that the user must be redirected to. Automatically
