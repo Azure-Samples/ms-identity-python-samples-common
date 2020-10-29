@@ -49,7 +49,7 @@ class AADConfig(SimpleNamespace): # faster access to attributes with slots.
             # assert b2c has required keys:            
             required_keys = ['susi','password', 'profile']
             for key in required_keys:
-                assert getattr(parsed_config.b2c, key).lower().startswith('/b2c_1'), (
+                assert getattr(parsed_config.b2c, key).startswith('/'), (
                     f"`{key}` value under b2c must be non-empty string if "
                     "'authority_type'is AuthorityType.B2C")
         else:
