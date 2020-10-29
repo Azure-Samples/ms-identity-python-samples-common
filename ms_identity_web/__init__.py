@@ -281,6 +281,10 @@ class IdentityWebPython(object):
         def assert_login(*args, **kwargs):
             if not self._adapter.identity_context_data.authenticated:
                 raise NotAuthenticatedError
+            # TODO: check if ID token is expired
+            # if it is, take user to get re-authenticated.
+            # TODO: upon returning from re-auth, user should get back to
+            # where they were trying to go.
             return f(*args, **kwargs)
         return assert_login
 
