@@ -1,11 +1,1 @@
-certifi==2020.6.20
-cffi==1.14.3
-chardet==3.0.4
-cryptography==3.1.1
-idna==2.10
-msal==1.5.0
-pycparser==2.20
-PyJWT==1.7.1
-requests==2.24.0
-six==1.15.0
-urllib3==1.25.10
+msal>=1.6.0,<2
