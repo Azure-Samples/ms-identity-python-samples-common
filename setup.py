@@ -6,7 +6,7 @@ setup(name='ms_identity_web',
       author='Azure Samples',
       url='https://github.com/azure-samples/ms-identity-python-utilities',
       packages=find_packages(),
-      requires=['msal>=1.6.0,<2'],
+      install_requires=['msal>=1.6.0,<2'],
      )
 
 
