@@ -2,11 +2,11 @@ from msal import ConfidentialClientApplication, PublicClientApplication, Seriali
 
 from uuid import uuid4
 from logging import Logger
-from typing import Union, Any
+from typing import Any
 from functools import wraps
 from .context import IdentityContextData
 from .constants import *
-from .adapters import IdentityWebContextAdapter, FlaskContextAdapter
+from .adapters import IdentityWebContextAdapter
 from .errors import *
 
 # TODO: 
@@ -42,7 +42,7 @@ def require_context_adapter(f):
         
 class IdentityWebPython(object):
 
-    def __init__(self, aad_config: 'AADConfig', adapter: FlaskContextAdapter = None, logger: Logger = None) -> None:
+    def __init__(self, aad_config: 'AADConfig', adapter: IdentityWebContextAdapter = None, logger: Logger = None) -> None:
         self._logger = logger or Logger('IdentityWebPython')
         self._adapter = None
         self.aad_config = aad_config
@@ -56,11 +56,11 @@ class IdentityWebPython(object):
     
     # TODO: make the call from the adapter to this and reverse the config process?
     def set_adapter(self, adapter: IdentityWebContextAdapter) -> None:                
-        if isinstance(adapter, FlaskContextAdapter):
-            self._adapter = adapter
-            adapter.attach_identity_web_util(self)
-        else:
-            raise NotImplementedError(f"Currently, only the following adapters are supoprted: FlaskContextAdapter")
+        # if isinstance(adapter, FlaskContextAdapter):
+        self._adapter = adapter
+        adapter.attach_identity_web_util(self)
+        # else:
+        #     raise NotImplementedError(f"Currently, only the following adapters are supoprted: FlaskContextAdapter")
         
     def set_logger(self, logger: Logger) -> None:
         self._logger = logger
