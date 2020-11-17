@@ -1,8 +1,11 @@
-from flask import (
-    Blueprint, redirect, 
-    url_for, render_template, 
-    current_app, g
-    )
+try:
+    from flask import (
+        Blueprint, redirect,
+        url_for, render_template,
+        current_app, g
+        )
+except:
+    pass
 
 from ms_identity_web.constants import AADErrorResponse
 from ms_identity_web.errors import NotAuthenticatedError
