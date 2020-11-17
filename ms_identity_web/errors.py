@@ -1,4 +1,3 @@
-from werkzeug.exceptions import HTTPException
 class AuthError(Exception):
     # basic auth exception
     pass
@@ -14,7 +13,15 @@ class TokenExchangeError(AuthError):
 class B2CPasswordError(AuthError):
     # login interrupted, must do password reset
     pass
-class NotAuthenticatedError(HTTPException, AuthError):
-    """Flask HTTPException Error + IdWebPy AuthError: User is not authenticated."""
-    code = 401
-    description = 'User is not authenticated'
+
+try:
+    from werkzeug.exceptions import HTTPException
+    class NotAuthenticatedError(HTTPException, AuthError):
+        """Flask HTTPException Error + IdWebPy AuthError: User is not authenticated."""
+        code = 401
+        description = 'User is not authenticated'
+except:
+    class NotAuthenticatedError(AuthError):
+        """IdWebPy AuthError: User is not authenticated."""
+        code = 401
+        description = 'User is not authenticated'
