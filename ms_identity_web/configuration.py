@@ -51,7 +51,7 @@ class AADConfig(SimpleNamespace): # faster access to attributes with slots.
             for key in required_keys:
                 assert getattr(parsed_config.b2c, key).startswith('/'), (
                     f"`{key}` value under b2c must be non-empty string if "
-                    "'authority_type'is AuthorityType.B2C")
+                    "'authority_type' is AuthorityType.B2C")
         else:
             setattr(parsed_config, 'b2c', None)
 
@@ -62,3 +62,9 @@ class AADConfig(SimpleNamespace): # faster access to attributes with slots.
                 assert getattr(parsed_config.flask.auth_endpoints, key).startswith('/'), (
                     f"The `{key}` value under 'flask.auth_endpoints must be string starting with / if "
                     "'framework' is FLASK")
+        elif parsed_config.type.framework == 'DJANGO':
+            assert parsed_config.django.id_web_configs
+            required_keys = ['prefix', 'sign_in', 'edit_profile', 'redirect', 'sign_out', 'post_sign_out']
+            for key in required_keys:
+                assert parsed_config.django.auth_endpoints[key], (f"The `{key}` value under 'django.auth_endpoints'" 
+                "must be non-empty string if 'framework' is DJANGO")

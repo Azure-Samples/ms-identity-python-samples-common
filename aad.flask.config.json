@@ -3,17 +3,17 @@
         "client_type": "CONFIDENTIAL",
         "authority_type": "SINGLE_TENANT",
         "framework": "FLASK"
-        },
+    },
     "client": {
         "client_id": "enter-your-client-id-here",
         "client_credential": "enter-your-client-secret-here",
         "authority": "https://login.microsoftonline.com/enter-your-tenant-id-here"
-        },
+    },
     "auth_request": {
         "redirect_uri": null,
         "scopes": [],
         "response_type": "code"
-        },
+    },
     "flask": {
         "id_web_configs": "MS_ID_WEB_CONFIGS",
         "auth_endpoints": {
@@ -25,6 +25,5 @@
             "post_sign_out": "/post_sign_out"
         }
     },
-    "django": "Django is not yet implemented in this sample"
-    }
-    
+    "django": null
+}
