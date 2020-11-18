@@ -24,12 +24,13 @@ class AADConfig(SimpleNamespace): # faster access to attributes with slots.
         
     @staticmethod
     def sanity_check_configs(parsed_config) -> None:
-        required = ('type', 'client', 'auth_request', 'flask')
-        for req in required: assert hasattr(parsed_config, req) 
+        required = ('type', 'client', 'auth_request')
+        for req in required: assert hasattr(parsed_config, req)
+        assert (parsed_config.flask or parsed_config.django)
         
         assert ClientType.has_key(parsed_config.type.client_type), "'client_type' must be non-empty string"
         assert AuthorityType.has_key(parsed_config.type.authority_type), "'authority_type' must be non-empty string"
-        assert parsed_config.type.framework == 'FLASK', "only flask supported right now"
+        assert parsed_config.type.framework == 'FLASK' or parsed_config.type.framework == 'DJANGO', "only FLASK & DJANGO supported right now"
 
         assert str(parsed_config.client.client_id), "'client_id' must be non-empty string"
         assert str(parsed_config.client.authority), "'authority' must be non-empty string"
