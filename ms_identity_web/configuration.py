@@ -67,5 +67,5 @@ class AADConfig(SimpleNamespace): # faster access to attributes with slots.
             assert parsed_config.django.id_web_configs
             required_keys = ['prefix', 'sign_in', 'edit_profile', 'redirect', 'sign_out', 'post_sign_out']
             for key in required_keys:
-                assert parsed_config.django.auth_endpoints[key], (f"The `{key}` value under 'django.auth_endpoints'" 
+                assert getattr(parsed_config.django.auth_endpoints, key), (f"The `{key}` value under 'django.auth_endpoints'"
                 "must be non-empty string if 'framework' is DJANGO")
