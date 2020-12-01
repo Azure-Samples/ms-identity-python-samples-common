@@ -36,9 +36,9 @@ class MsalViews:
 
     def aad_redirect(self, request):
         self.logger.debug(f"{self.prefix}{self.endpoints.redirect}: request received. will process params")
-        next_action = redirect(reverse('index'))
-        return self.ms_identity_web.process_auth_redirect(next_action, # TODO: remove 'next_action' -> add redirect function to django adapter?
-            redirect_uri=request.build_absolute_uri(reverse(self.endpoints.redirect))) 
+        return self.ms_identity_web.process_auth_redirect(
+            redirect_uri=request.build_absolute_uri(reverse(self.endpoints.redirect)),
+            afterwards_go_to_url=reverse('index'))
 
     def sign_out(self, request):
         self.logger.debug(f"{self.prefix}{self.endpoints.sign_out}: signing out username: {request.identity_context_data.username}")
