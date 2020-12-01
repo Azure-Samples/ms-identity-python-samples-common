@@ -143,7 +143,7 @@ class IdentityWebPython(object):
         
         #TODO: GET /auth/redirect?error=interaction_required&error_description=AADB2C90077%3a+User+does+not+have+an+existing+session+and+request+prompt+parameter+has+a+value+of+%27None%27.
         
-        return self._adapter.redirect_to_absolute_url(afterwards_go_to)
+        return self._adapter.redirect_to_absolute_url(afterwards_go_to_url)
 
     @require_context_adapter
     def _x_change_auth_code_for_token(self, code: str, token_cache: SerializableTokenCache = None, redirect_uri = None) -> dict:
