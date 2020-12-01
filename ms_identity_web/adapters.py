@@ -9,14 +9,13 @@ try:
         g as flask_g,
         url_for as flask_url_for
         )
+    from .flask_blueprint import FlaskAADEndpoints # this is where our auth-related endpoints are defined
 except:
     pass
 
 from .context import IdentityContextData
-from .flask_blueprint import FlaskAADEndpoints # this is where our auth-related endpoints are defined
-from typing import Any, Union
-from functools import partial, wraps
-import json
+from typing import Any
+from functools import wraps
 
 # decorator to make sure access within request context
 def require_request_context(f):
@@ -156,8 +155,6 @@ class FlaskContextAdapter(IdentityWebContextAdapter):
         auth_endpoints = FlaskAADEndpoints(identity_web)
         self.app.context_processor(lambda: dict(ms_id_url_for=auth_endpoints.url_for))
         self.app.register_blueprint(auth_endpoints)        
-        
-        
 
     @property
     def has_context(self) -> bool:

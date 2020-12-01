@@ -24,4 +24,5 @@ except:
     class NotAuthenticatedError(AuthError):
         """IdWebPy AuthError: User is not authenticated."""
         code = 401
+        status = 401
         description = 'User is not authenticated'

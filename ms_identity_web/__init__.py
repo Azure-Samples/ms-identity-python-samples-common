@@ -1,4 +1,4 @@
-from msal import ConfidentialClientApplication, PublicClientApplication, SerializableTokenCache
+from msal import ConfidentialClientApplication, SerializableTokenCache
 
 from uuid import uuid4
 from logging import Logger
@@ -96,7 +96,7 @@ class IdentityWebPython(object):
         return self._client_factory().get_authorization_request_url(**auth_req_options)
 
     @require_context_adapter
-    def process_auth_redirect(self, next_action, redirect_uri: str = None, response_type: str = None) -> None:
+    def process_auth_redirect(self, redirect_uri: str = None, response_type: str = None, afterwards_go_to_url: str = None) -> Any:
         req_params = self._adapter.get_request_params_as_dict() # grab the incoming request params
         try:
             # CSRF protection: make sure to check that state matches the one placed in the session in the previous step.
@@ -121,7 +121,6 @@ class IdentityWebPython(object):
                 raise NotImplementedError(f"response_type {resp_type} is not yet implemented by ms_identity_web_python")
             self._process_result(result, cache)
             # self._verify_nonce() # one of the last steps TODO - is this required? msal python takes care of it?
-            return next_action
         except AuthSecurityError as ase:
             self.remove_user()
             self._logger.error(f"process_auth_redirect: security violation {ase.args}")
@@ -144,7 +143,7 @@ class IdentityWebPython(object):
         
         #TODO: GET /auth/redirect?error=interaction_required&error_description=AADB2C90077%3a+User+does+not+have+an+existing+session+and+request+prompt+parameter+has+a+value+of+%27None%27.
         
-        return next_action #TODO: replace this with call to the adapter for internal redirect
+        return self._adapter.redirect_to_absolute_url(afterwards_go_to)
 
     @require_context_adapter
     def _x_change_auth_code_for_token(self, code: str, token_cache: SerializableTokenCache = None, redirect_uri = None) -> dict:

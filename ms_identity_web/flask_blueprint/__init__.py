@@ -1,11 +1,8 @@
 from flask import (
     Blueprint, redirect,
-    url_for, render_template,
+    url_for,
     current_app, g
     )
-
-from ms_identity_web.constants import AADErrorResponse
-from ms_identity_web.errors import NotAuthenticatedError
 
 # TODO: redirect(url_for('index')) is too opinionated. user must be able to choose
 
@@ -34,9 +31,8 @@ class FlaskAADEndpoints(Blueprint):
         @self.route(endpoints.redirect)
         def aad_redirect():
             current_app.logger.debug(f"{name}{endpoints.redirect}: request received. will process params")
-            next_action = redirect(url_for('index'))
-            return id_web.process_auth_redirect(next_action, # TODO: remove 'next_action' -> add redirect function to flask adapter?
-                            redirect_uri=url_for('.aad_redirect',_external=True)) 
+            return id_web.process_auth_redirect(redirect_uri=url_for('.aad_redirect',_external=True),
+                                                afterwards_go_to_url=url_for('index')) 
 
         @self.route(endpoints.sign_out)
         def sign_out():
