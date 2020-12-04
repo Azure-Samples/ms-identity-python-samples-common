@@ -80,8 +80,8 @@ class IdentityWebPython(object):
             configures B2C if app type is set to B2C."""
         auth_req_options = self.aad_config.auth_request.__dict__.copy()
         auth_req_options.update(**msal_auth_url_kwargs)
-
-        auth_req_options['redirect_uri'] = redirect_uri or auth_req_options.redirect_uri or None
+        if redirect_uri:
+            auth_req_options['redirect_uri'] = redirect_uri
         self._generate_and_append_state_to_context_and_request(auth_req_options)
 
         if self.id_data.authenticated:
@@ -130,7 +130,7 @@ class IdentityWebPython(object):
         except B2CPasswordError as b2cpwe:
             self.remove_user()
             self._logger.error(f"process_auth_redirect: b2c pwd {b2cpwe.args}")
-            pw_reset_url = self.get_auth_url(policy = self.aad_config.b2c.password)
+            pw_reset_url = self.get_auth_url(redirect_uri=redirect_uri, b2c_policy = self.aad_config.b2c.password)
             return self._adapter.redirect_to_absolute_url(pw_reset_url)
         except TokenExchangeError as ter:
             self.remove_user()
