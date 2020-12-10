@@ -3,16 +3,24 @@ class AuthError(Exception):
     pass
 class AuthSecurityError(AuthError):
     # security check failed, abort auth attempt
-    pass
+    code = 400
+    status = 400
+    description = "security check failed (state or nonce)"
 class OtherAuthError(AuthError):
     # unknown aad error, abort auth attempt
-    pass
+    code = 500
+    status = 500
+    description = "unknown error"
 class TokenExchangeError(AuthError):
     # unknown aad error, abort auth attempt
-    pass
+    code = 500
+    status = 500
+    description = "failed to exchange auth code for token(s)"
 class B2CPasswordError(AuthError):
     # login interrupted, must do password reset
-    pass
+    code = 300
+    status = 300
+    description = "password reset/redirect"
 
 try:
     from werkzeug.exceptions import HTTPException
@@ -20,7 +28,7 @@ try:
     class NotAuthenticatedError(HTTPException, AuthError):
         """Flask HTTPException Error + IdWebPy AuthError: User is not authenticated."""
         code = 401
-        route = request.url_rule
+        status = 401
         description = 'User is not authenticated'
 except:
     class NotAuthenticatedError(AuthError):
