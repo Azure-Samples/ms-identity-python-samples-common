@@ -16,9 +16,11 @@ class B2CPasswordError(AuthError):
 
 try:
     from werkzeug.exceptions import HTTPException
+    from flask import request
     class NotAuthenticatedError(HTTPException, AuthError):
         """Flask HTTPException Error + IdWebPy AuthError: User is not authenticated."""
         code = 401
+        route = request.url_rule
         description = 'User is not authenticated'
 except:
     class NotAuthenticatedError(AuthError):
