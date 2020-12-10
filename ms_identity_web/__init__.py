@@ -92,7 +92,7 @@ class IdentityWebPython(object):
                 b2c_policy = self.aad_config.b2c.susi
             self._adapter.identity_context_data.last_used_b2c_policy = b2c_policy
             return self._client_factory(b2c_policy=b2c_policy).get_authorization_request_url(**auth_req_options)
-        raise AuthSecurityError
+
         return self._client_factory().get_authorization_request_url(**auth_req_options)
 
     @require_context_adapter
@@ -137,12 +137,12 @@ class IdentityWebPython(object):
             self._logger.error(f"process_auth_redirect: token xchange {ter.args}")
         except BaseException as other:
             self.remove_user()
-            self._logger.error(f"process_auth_redirect: unknown error {other.args}")
+            self._logger.error(f"process_auth_redirect: unknown error{other.args}")
         finally:
             self._logger.info("process_auth_redirect: exiting auth code method. redirecting... ") 
         
         #TODO: GET /auth/redirect?error=interaction_required&error_description=AADB2C90077%3a+User+does+not+have+an+existing+session+and+request+prompt+parameter+has+a+value+of+%27None%27.
-        
+        raise AssertionError
         return self._adapter.redirect_to_absolute_url(afterwards_go_to_url)
 
     @require_context_adapter
