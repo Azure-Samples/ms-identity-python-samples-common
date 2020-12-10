@@ -142,7 +142,6 @@ class IdentityWebPython(object):
             self._logger.info("process_auth_redirect: exiting auth code method. redirecting... ") 
         
         #TODO: GET /auth/redirect?error=interaction_required&error_description=AADB2C90077%3a+User+does+not+have+an+existing+session+and+request+prompt+parameter+has+a+value+of+%27None%27.
-        raise AuthSecurityError
         return self._adapter.redirect_to_absolute_url(afterwards_go_to_url)
 
     @require_context_adapter
@@ -249,11 +248,11 @@ class IdentityWebPython(object):
     def _verify_state(self, req_params: dict) -> None:
         state = req_params.get('state', None)
         session_state = self._adapter.identity_context_data.state
+        # don't allow re-use of state
+        self._adapter.identity_context_data.state = None
         # reject states that don't match
         if state is None or session_state != state:
             raise AuthSecurityError("Failed to match request state with session state")
-        # don't allow re-use of state
-        self._adapter.identity_context_data.state = None
     
     @require_context_adapter
     def _generate_and_append_nonce_to_context_and_request(self, req_param_dict: dict) -> str:
