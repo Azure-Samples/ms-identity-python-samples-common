@@ -15,6 +15,7 @@ class IdentityContextData(object):
         self._id_token_claims = {} # does this belong here? yes, Token/claims customization. TODO: if it does, add getter/setter, # ID tokens aren't cached so store this here? 
         self._access_token = None
         self._last_used_b2c_policy = []
+        self._post_sign_in_url = None
         self.has_changed = False # don't save this
 
     @property
@@ -77,4 +78,13 @@ class IdentityContextData(object):
     @last_used_b2c_policy.setter
     def last_used_b2c_policy(self, value: str) -> None:
         self._last_used_b2c_policy = [value]
+        self.has_changed = True
+
+    @property
+    def post_sign_in_url(self) -> str:
+        return self._post_sign_in_url
+
+    @post_sign_in_url.setter
+    def post_sign_in_url(self, value: str) -> None:
+        self._post_sign_in_url = value
         self.has_changed = True

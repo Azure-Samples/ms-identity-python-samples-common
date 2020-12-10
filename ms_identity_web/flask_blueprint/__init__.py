@@ -1,7 +1,10 @@
 from flask import (
     Blueprint, redirect,
     url_for,
-    current_app, g
+    current_app,
+    g,
+    session,
+    request,
     )
 
 # TODO: redirect(url_for('index')) is too opinionated. user must be able to choose
@@ -16,6 +19,8 @@ class FlaskAADEndpoints(Blueprint):
 
         @self.route(endpoints.sign_in)
         def sign_in():
+            print("test", request.url_rule)
+            id_web.id_data.post_sign_in_url = request.values.get('post_sign_in_url', None)
             current_app.logger.debug(f"{name}{endpoints.sign_in}: request received. will redirect browser to login")
             auth_url = id_web.get_auth_url(redirect_uri=url_for('.aad_redirect', _external=True))
             return redirect(auth_url)
@@ -30,9 +35,10 @@ class FlaskAADEndpoints(Blueprint):
 
         @self.route(endpoints.redirect)
         def aad_redirect():
+            post_sign_in_url = id_web.id_data.post_sign_in_url
             current_app.logger.debug(f"{name}{endpoints.redirect}: request received. will process params")
             return id_web.process_auth_redirect(redirect_uri=url_for('.aad_redirect',_external=True),
-                                                afterwards_go_to_url=url_for('index')) 
+                                                afterwards_go_to_url=post_sign_in_url or url_for('index'))
 
         @self.route(endpoints.sign_out)
         def sign_out():
