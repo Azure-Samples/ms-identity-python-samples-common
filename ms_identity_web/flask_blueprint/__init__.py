@@ -19,7 +19,7 @@ class FlaskAADEndpoints(Blueprint):
 
         @self.route(endpoints.sign_in)
         def sign_in():
-            print("test", request.url_rule)
+            current_app.logger.info("test:::::::", request.url_rule)
             id_web.id_data.post_sign_in_url = request.values.get('post_sign_in_url', None)
             current_app.logger.debug(f"{name}{endpoints.sign_in}: request received. will redirect browser to login")
             auth_url = id_web.get_auth_url(redirect_uri=url_for('.aad_redirect', _external=True))
