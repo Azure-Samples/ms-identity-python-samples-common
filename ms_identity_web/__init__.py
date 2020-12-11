@@ -265,11 +265,11 @@ class IdentityWebPython(object):
     def _verify_nonce(self, req_params: dict) -> None:
         nonce = req_params.get('nonce', None)
         session_nonce = self._adapter.identity_context_data.nonce
+        # don't allow re-use of nonce
+        self._adapter.identity_context_data.nonce = None
         # reject nonces that don't match
         if nonce is None or session_nonce != nonce:
             raise AuthSecurityError("Failed to match ID token nonce with session nonce")
-        # don't allow re-use of nonce
-        self._adapter.identity_context_data.nonce = None
 
     # TODO: enforce ID token expiry.
     # @decorator to ensure the user is authenticated

@@ -7,6 +7,10 @@ class IdentityContextData(object):
     SESSION_KEY='identity_context_data' #TODO: make configurable
 
     def __init__(self) -> None:
+        self.clear()
+        self.has_changed = False
+    
+    def clear(self) -> None:
         self._authenticated = False
         self._username = "anonymous"
         self._token_cache = None
@@ -16,7 +20,7 @@ class IdentityContextData(object):
         self._access_token = None
         self._last_used_b2c_policy = []
         self._post_sign_in_url = None
-        self.has_changed = False # don't save this
+        self.has_changed = True
 
     @property
     def authenticated(self) -> bool:

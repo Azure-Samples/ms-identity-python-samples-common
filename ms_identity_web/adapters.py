@@ -170,8 +170,7 @@ class FlaskContextAdapter(IdentityWebContextAdapter):
     @require_request_context
     def clear_session(self) -> None:
         """this function clears the session and refreshes context. TODO: only clear IdWebPy vars"""
-        # TODO: clear ONLY msidweb session stuff
-        flask_session.clear()
+        self.identity_context_data.clear()
 
     @require_request_context
     def redirect_to_absolute_url(self, absolute_url: str) -> None:
@@ -193,13 +192,13 @@ class FlaskContextAdapter(IdentityWebContextAdapter):
     # does this need to be public method?
     @require_request_context
     def _deserialize_identity_context_data_from_session(self) -> 'IdentityContextData':
-        blank_id_context_data = IdentityContextData()
+        new_id_context_data = IdentityContextData()
         try:
             id_context_from_session = self.session.get(IdentityContextData.SESSION_KEY, dict())
-            blank_id_context_data.__dict__.update(id_context_from_session)
+            new_id_context_data.__dict__.update(id_context_from_session)
         except Exception as exception:
             self.logger.warning(f"failed to deserialize identity context from session: creating empty one\n{exception}")
-        return blank_id_context_data
+        return new_id_context_data
 
     # does this need to be public method?
     @require_request_context
