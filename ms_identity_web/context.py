@@ -9,7 +9,7 @@ class IdentityContextData(object):
     def __init__(self) -> None:
         self.clear()
         self.has_changed = False
-    
+
     def clear(self) -> None:
         self._authenticated = False
         self._username = "anonymous"
