@@ -142,7 +142,7 @@ class IdentityWebPython(object):
             self._logger.info("process_auth_redirect: exiting auth code method. redirecting... ") 
         
         #TODO: GET /auth/redirect?error=interaction_required&error_description=AADB2C90077%3a+User+does+not+have+an+existing+session+and+request+prompt+parameter+has+a+value+of+%27None%27.
-        raise Exception
+        raise NotAuthenticatedError
         return self._adapter.redirect_to_absolute_url(afterwards_go_to_url)
 
     @require_context_adapter
