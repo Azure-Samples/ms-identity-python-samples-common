@@ -124,24 +124,28 @@ class IdentityWebPython(object):
         except AuthSecurityError as ase:
             self.remove_user()
             self._logger.error(f"process_auth_redirect: security violation {ase.args}")
+            raise ase
         except OtherAuthError as oae:
             self.remove_user()
             self._logger.error(f"process_auth_redirect: other auth error {oae.args}")
+            raise oae
         except B2CPasswordError as b2cpwe:
             self.remove_user()
             self._logger.error(f"process_auth_redirect: b2c pwd {b2cpwe.args}")
             pw_reset_url = self.get_auth_url(redirect_uri=redirect_uri, b2c_policy = self.aad_config.b2c.password)
             return self._adapter.redirect_to_absolute_url(pw_reset_url)
+            # don't raise
         except TokenExchangeError as ter:
             self.remove_user()
             self._logger.error(f"process_auth_redirect: token xchange {ter.args}")
+            raise ter
         except BaseException as other:
             self.remove_user()
             self._logger.error(f"process_auth_redirect: unknown error{other.args}")
-        finally:
-            self._logger.info("process_auth_redirect: exiting auth code method. redirecting... ") 
+            raise other
         
         #TODO: GET /auth/redirect?error=interaction_required&error_description=AADB2C90077%3a+User+does+not+have+an+existing+session+and+request+prompt+parameter+has+a+value+of+%27None%27.
+        self._logger.info("process_auth_redirect: exiting auth code method. redirecting... ")
         return self._adapter.redirect_to_absolute_url(afterwards_go_to_url)
 
     @require_context_adapter
