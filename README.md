@@ -5,15 +5,15 @@ This repository contains a set of code that is shared amongst the various Python
 ## Features
 
 The code present makes available or aims to make available the following features to the developers: 
-- Allow for (but not require) automatic Flask/Django/other framework integration (implemented for flask)
-- Allow for (but not require) automatic endpoint protection (implemented for flask)
+- Allow for (but not require) automatic Flask/Django/other framework integration (implemented)
+- Allow for (but not require) automatic endpoint protection (implemented)
 - Catch AAD errors and handle them properly, e.g.:
     - password reset flow and edit profile flow (implemented)
     - insufficient / incremental consent (needs implementation)
 - Token cache handling (implemeted)
 - authN enforcement by decorator (implemented)
 - Allow multiple identity sessions per user browser session (i.e., multiple logged in users in one browser session) (not yet implemented)
-- Abstract authN and authZ implementation details away from developer
+- Abstract authN and authZ implementation details away from developer (implemented)
 - authZ enforcement by decorator (not yet implented)
 
 ## Getting Started
@@ -22,7 +22,7 @@ The code present makes available or aims to make available the following feature
 
 - Python 3.8
 - A virtual env for your own webapp project
-- A flask project (currently implemented) or other web framework (not yet implemented) or desktop app (not yet implemented)
+- A flask project or django project (impelemented) or other web framework (not yet implemented) or desktop app (not yet implemented)
 
 ### Installation
 
@@ -59,16 +59,16 @@ pip install -r requirements.txt
 Use **only one** of the following two options:
 - via https://
 ```
-pip install git+https://github.com/azure-samples/ms-identity-python-utilities.git@idgsam
+pip install git+https://github.com/azure-samples/ms-identity-python-samples-common
 ```
 - via ssh://
 ```
-pip install git+ssh://git@github.com/azure-samples/ms-identity-python-utilities.git@idgsam
+pip install git+ssh://git@github.com/azure-samples/ms-identity-python-samples-common
 ```
 
 ##### 3. copy a config template (e.g. `aad.config.json`) from the repo and in to your project root dir, and fill in the details
 
-### Quickstart
+### Quickstart (Flask)
 
 
 don't forget to import the required modules into your application as necessary:
@@ -94,7 +94,7 @@ def my_protected_route():
 
 ## Demo
 
-see: https://github.com/azure-samples/ms-identity-b2c-python-flask-webapp-authentication/tree/idgsam  (@ idgsam branch) for a demo
+see: https://github.com/azure-samples/ms-identity-python-flask-tutorial or https://github.com/azure-samples/ms-identity-python-django-tutorial for a demo with any of the apps there
 
 ## Project Structure
 #### __init__.py
@@ -102,13 +102,15 @@ see: https://github.com/azure-samples/ms-identity-b2c-python-flask-webapp-authen
 #### adapters.py
 - FlaskContextAdapter for handling interaction between the API and flask context (e.g. session, request)
 - An ABC defining the interface for writing more adapters
-- Django adapter will go here.
 - Should be re-organised into folders on a per-framework basis?
 #### flask_blueprint
-- a class that implemets all aad-specific endpoints. support for multiple instances with different prefixes if necessary
+- a class that implements all aad-specific endpoints. support for multiple instances with different prefixes if necessary
 - all bindings are automatic with flaskcontextadapter
-#### blueprint-like functionality for django (`reusable django app`)
-- not yet implemented
+#### django adapter
+- `django.adapter` is used to integrate with Django apps
+- need to use `django.middleware` as middleware in Django apps
+#### django endpoints
+- `django.msal_views_and_urls.py` implements all aad-specific endpoints. support for multiple instances with different prefixes if necessary
 #### context.py
 - IdentityContext class that holds ID-specific info (simple class with attributes and has_changed function for write-to-session decision)
 #### configuration.py
