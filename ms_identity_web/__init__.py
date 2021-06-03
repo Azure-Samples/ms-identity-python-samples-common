@@ -80,7 +80,7 @@ class IdentityWebPython(object):
             configures B2C if app type is set to B2C."""
         auth_req_options = self.aad_config.auth_request.__dict__.copy()
         auth_req_options.update(**msal_auth_url_kwargs)
-        if redirect_uri:
+        if redirect_uri and auth_req_options['redirect_uri'] is None:
             auth_req_options['redirect_uri'] = redirect_uri
         self._generate_and_append_state_to_context_and_request(auth_req_options)
 
