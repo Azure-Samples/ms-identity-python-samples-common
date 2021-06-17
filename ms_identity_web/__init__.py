@@ -1,7 +1,7 @@
 from msal import ConfidentialClientApplication, SerializableTokenCache
 
 from uuid import uuid4
-from logging import Logger
+from logging import getLogger, Logger
 from typing import Any
 from functools import wraps
 from .context import IdentityContextData
@@ -43,7 +43,7 @@ def require_context_adapter(f):
 class IdentityWebPython(object):
 
     def __init__(self, aad_config: 'AADConfig', adapter: IdentityWebContextAdapter = None, logger: Logger = None) -> None:
-        self._logger = logger or Logger('IdentityWebPython')
+        self._logger = logger or getLogger('IdentityWebPython')
         self._adapter = None
         self.aad_config = aad_config
         if adapter is not None:
