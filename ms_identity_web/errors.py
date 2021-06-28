@@ -1,6 +1,15 @@
-class AuthError(Exception):
-    # basic auth exception
-    pass
+try:
+    from werkzeug.exceptions import HTTPException
+    from flask import request
+    class AuthError(HTTPException):
+        code = 401
+        status = 401
+        description = "General auth error"
+except:
+    class AuthError(Exception):
+        # basic auth exception
+        pass
+
 class AuthSecurityError(AuthError):
     # security check failed, abort auth attempt
     code = 400
@@ -21,18 +30,8 @@ class B2CPasswordError(AuthError):
     code = 300
     status = 300
     description = "password reset/redirect"
-
-try:
-    from werkzeug.exceptions import HTTPException
-    from flask import request
-    class NotAuthenticatedError(HTTPException, AuthError):
-        """Flask HTTPException Error + IdWebPy AuthError: User is not authenticated."""
-        code = 401
-        status = 401
-        description = 'User is not authenticated'
-except:
-    class NotAuthenticatedError(AuthError):
-        """IdWebPy AuthError: User is not authenticated."""
-        code = 401
-        status = 401
-        description = 'User is not authenticated'
+class NotAuthenticatedError(AuthError):
+    """IdWebPy AuthError: User is not authenticated."""
+    code = 401
+    status = 401
+    description = 'User is not authenticated'
